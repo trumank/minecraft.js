@@ -196,7 +196,7 @@
             this.lon += this.world.mc.mouseMovement.x * lookSpeed;
             this.lat -= this.world.mc.mouseMovement.y * lookSpeed;
 
-            this.lat = Math.max(-90, Math.min(90, this.lat));
+            this.lat = THREE.Math.clamp(this.lat, -89.9, 89.9);
             this.phi = (90 - this.lat) * Math.PI / 180;
             this.theta = this.lon * Math.PI / 180;
 
@@ -215,7 +215,7 @@
             this.velocity.set(0, this.velocity.y, 0);
 
             if (this.world.mc.keysDown[32] && this.onGround) { // jump
-                this.velocity.y = 0.2;
+                this.velocity.y = Math.sqrt(0.02);
             }
 
             if (this.world.mc.keysDown[65]) { // left
@@ -250,62 +250,65 @@
                 }
             }
 
+            function intersects(a, b) {
+                return !(a.max.x <= b.min.x || a.min.x >= b.max.x || a.max.y <= b.min.y || a.min.y >= b.max.y)
+            }
+
             var dir;
             var playerFace;
-            var axes = [['x', 'y', 'z', 0.4, -0.4], ['y', 'x', 'z', 1.5, -0.5], ['z', 'x', 'y', 0.4, -0.4]];
-            for (var a = 0; a < axes.length; a++) {
-                var axis = axes[a];
-                if (this.velocity[axis[0]]) {
-                    dir = this.velocity[axis[0]] > 0 ? 'min' : 'max';
-                    playerFace = {
-                        pos: oldbb[this.velocity[axis[0]] < 0 ? 'min' : 'max'][axis[0]],
-                        box: new THREE.Box2(new THREE.Vector2(oldbb.min[axis[1]], oldbb.min[axis[2]]), new THREE.Vector2(oldbb.max[axis[1]], oldbb.max[axis[2]]))
-                    };
-                    var n = this.velocity[axis[0]] > 0 ? Infinity : -Infinity;
-                    for (var i = 0; i < blocks.length; i++) {
-                        var block = blocks[i],
-                            face = {
-                                pos: block[dir][axis[0]],
-                                box: new THREE.Box2(new THREE.Vector2(block.min[axis[1]], block.min[axis[2]]), new THREE.Vector2(block.max[axis[1]], block.max[axis[2]]))
-                            },
-                            t = (face.pos - playerFace.pos) / this.velocity[axis[0]];
-                        if (t >= 0 && face.box.isIntersectionBox(playerFace.box.clone().translate(new THREE.Vector2(this.velocity[axis[1]] * t, this.velocity[axis[2]] * t)))) {
-                            n = Math[dir](face.pos, n);
+            var axes = [['x', 'y', 'z', 0.2, -0.2], ['y', 'x', 'z', 1.5, -0.3], ['z', 'x', 'y', 0.2, -0.2]];
+            while (true) {
+                var min = {
+                    axis: -1,
+                    time: Infinity,
+                    pos: 0
+                };
+                for (var a = 0; a < axes.length; a++) {
+                    var axis = axes[a];
+                    if (this.velocity[axis[0]]) {
+                        dir = this.velocity[axis[0]] > 0 ? 'min' : 'max';
+                        playerFace = {
+                            pos: oldbb[this.velocity[axis[0]] < 0 ? 'min' : 'max'][axis[0]],
+                            box: new THREE.Box2(new THREE.Vector2(oldbb.min[axis[1]], oldbb.min[axis[2]]), new THREE.Vector2(oldbb.max[axis[1]], oldbb.max[axis[2]]))
+                        };
+                        var n = this.velocity[axis[0]] > 0 ? Infinity : -Infinity,
+                            minT = Infinity;
+                        for (var i = 0; i < blocks.length; i++) {
+                            var block = blocks[i],
+                                face = {
+                                    pos: block[dir][axis[0]],
+                                    box: new THREE.Box2(new THREE.Vector2(block.min[axis[1]], block.min[axis[2]]), new THREE.Vector2(block.max[axis[1]], block.max[axis[2]]))
+                                },
+                                t = (face.pos - playerFace.pos) / this.velocity[axis[0]];
+                            if (t >= 0 && intersects(face.box, playerFace.box.clone().translate(new THREE.Vector2(this.velocity[axis[1]] * t, this.velocity[axis[2]] * t)))) {
+                                n = Math[dir](face.pos, n);
+                                minT = Math.min(minT, t);
+                            }
+                        }
+                        if (axis[0] === 'y') {
+                            this.onGround = isFinite(n) && this.velocity.y < 0;
+                        }
+                        if (isFinite(n)) {
+                            if (min.time > minT) {
+                                min = {
+                                    axis: a,
+                                    time: minT,
+                                    pos: n + (this.velocity[axis[0]] < 0 ? axis[3] : axis[4])
+                                }
+                            }
                         }
                     }
-                    if (a === 1) {
-                        this.onGround = isFinite(n) && this.velocity.y < 0;
-                    }
-                    if (isFinite(n)) {
-                        this.object.position[axis[0]] = n + (this.velocity[axis[0]] < 0 ? axis[3] : axis[4]);
-                        this.velocity[axis[0]] = 0;
-                    }
+                }
+                if (min.axis === -1) {
+                    break;
+                } else {
+                    var axis = axes[min.axis];
+                    this.object.position[axis[0]] = min.pos;
+                    this.velocity[axis[0]] = 0;
+                    axes.splice(min.axis, 1);
+                    min.axis = -1;
                 }
             }
-            /*if (this.velocity.z) { 
-                dir = this.velocity.z > 0 ? 'min' : 'max';
-                playerFace = {
-                    z: oldbb[this.velocity.z < 0 ? 'min' : 'max'].z,
-                    box: new THREE.Box2(new THREE.Vector2(oldbb.min.x, oldbb.min.y), new THREE.Vector2(oldbb.max.x, oldbb.max.y))
-                };
-                var nz = this.velocity.z > 0 ? Infinity : -Infinity;
-                for (var i = 0; i < blocks.length; i++) {
-                    var block = blocks[i],
-                        face = {
-                            z: block[dir].z,
-                            box: new THREE.Box2(new THREE.Vector2(block.min.x, block.min.y), new THREE.Vector2(block.max.x, block.max.y))
-                        },
-                        t = (face.z - playerFace.z) / this.velocity.z;
-                    if (t >= 0 && face.box.isIntersectionBox(playerFace.box.clone().translate(new THREE.Vector2(this.velocity.x * t, this.velocity.y * t)))) {
-                        nz = Math[dir](face.z, nz);
-                    }
-                }
-                if (isFinite(nz)) {
-                    this.object.position.z = nz + (this.velocity.z < 0 ? 0.4 : -0.4);
-                    this.velocity.z = 0;
-                }
-            }*/
-
 
             var chunks = this.world.chunks;
             var cx = this.object.position.x >> 4;
@@ -331,48 +334,7 @@
         },
         getBoundingBox: function () {
             var p = this.object.position;
-            return new THREE.Box3(new THREE.Vector3(p.x - 0.4, p.y - 1.5, p.z - 0.4), new THREE.Vector3(p.x + 0.4, p.y + 0.5, p.z + 0.4));
-        }
-    })
-
-    mc.BoundingBox = function (a, b) {
-        if (a instanceof THREE.Vector3 && b instanceof THREE.Vector3) {
-            this.min = new THREE.Vector3().min(a).min(b);
-            this.max = new THREE.Vector3().max(a).max(b);
-        } else if (a instanceof mc.BoundingBox && b instanceof mc.BoundingBox) {
-            this.min = new THREE.Vector3().min(a.min).min(b.min);
-            this.max = new THREE.Vector3().max(a.max).max(b.max);
-        }
-    }
-    extend(mc.BoundingBox.prototype, {
-        clone: function () {
-            var other = new mc.BoundingBox();
-            other.min = this.min.clone();
-            other.max = this.max.clone();
-        },
-        add: function () {
-
-        },
-        intersects: function(other) {
-            return !(this.max.x < other.min.x || this.max.y < other.min.y || this.max.z < other.min.z || this.min.x > other.max.x || this.min.y > this.max.y || this.min.z > this.max.z);
-        },
-        getMinX: function (other, v) {
-            if (!this.intersects(other)) {
-                return Infinity;
-            }
-            return v ? (v > 0 ? other.min.x - this.max.x : other.max.x - this.min.x) : Infinity;
-        },
-        getMinY: function (other, v) {
-            if (!this.intersects(other)) {
-                return Infinity;
-            }
-            return v ? (v > 0 ? other.min.y - this.max.y : other.max.y - this.min.y) : Infinity;
-        },
-        getMinZ: function (other, v) {
-            if (!this.intersects(other)) {
-                return Infinity;
-            }
-            return v ? (v > 0 ? other.min.z - this.max.z : other.max.z - this.min.z) : Infinity;
+            return new THREE.Box3(new THREE.Vector3(p.x - 0.2, p.y - 1.5, p.z - 0.2), new THREE.Vector3(p.x + 0.2, p.y + 0.3, p.z + 0.2));
         }
     });
 
