@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body style="margin: 0">
+    <script type="text/javascript" src="lib/three.js"></script>
+    <script type="text/javascript" src="lib/zlib.min.js"></script>
+    <script type="text/javascript" src="lib/binstream.js"></script>
+    <script type="text/javascript" src="js/minecraft.js"></script>
+    <script type="text/javascript">
+      var xhr = new XMLHttpRequest();
+      xhr.onload = function () {
+        window.region = xhr.response;
+        window.m = new mc.Minecraft(document.body, window.innerWidth, window.innerHeight);
+      };
+      xhr.open('GET', '../r.-1.0.mca');
+      xhr.responseType = 'arraybuffer';
+      xhr.send();
+    </script>
+  </body>
+</html>
