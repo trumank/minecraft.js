@@ -11,80 +11,6 @@
         return ((n1 % n2) + n2) % n2;
     }
 
-    mc.textures = {
-        terrain: []
-    };
-
-    mc.models = {
-
-    }
-
-    mc.loadTextures = function () {
-        for (var i = 0; i < 256; i++) {
-            var image = new Image();
-            var texture = new THREE.Texture(image, new THREE.UVMapping(), THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.LinearMipMapLinearFilter);
-            image.onload = (function () {
-                this.needsUpdate = true;
-            }).bind(texture);
-
-            mc.textures.terrain.push(new THREE.MeshBasicMaterial({
-                map: texture,
-                //transparent: true
-            }));
-        }
-        var terrain = new Image();
-        terrain.onload = function () {
-            var canvas = document.createElement('canvas');
-            canvas.width = terrain.width / 16;
-            canvas.height = terrain.height / 16;
-            var ctx = canvas.getContext('2d');
-            for (var i = 0; i < 256; i++) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(terrain, (i % 16) * -16, (i % 16) - i);
-                mc.textures.terrain[i].map.image.src = canvas.toDataURL();
-            }
-        };
-        terrain.src = 'img/terrain.png';
-
-        var t = mc.textures.terrain;
-
-        var s = function (i, solid) {
-            return [solid === false ? false : true, [i, i, i, i, i, i]];
-        }
-
-        mc.models.blocks = {
-            1: s(1),
-            2: [true, [3, 3, 0, 2, 3, 3]],
-            3: s(2),
-            4: s(16),
-            5: s(4),
-            6: s(15, false),
-            7: s(17),
-            8: s(223, false), // water
-            9: s(223, false), // water
-            10: s(255, false), // lava
-            11: s(255, false), // lava
-            12: s(18),
-            13: s(19),
-            14: s(32),
-            15: s(33),
-            16: s(34),
-            17: [true, [20, 20, 21, 21, 20, 20]],
-            18: s(53),
-            19: s(48),
-            // ...
-            37: s(13, false),
-            38: s(12, false),
-            // ...
-            56: s(50),
-            // ...
-            73: s(51),
-            74: s(51),
-        };
-    };
-
-    mc.loadTextures();
-
     mc.loadTexture = function (path) {
         var image = new Image();
         image.onload = function () {
@@ -94,18 +20,16 @@
 
         var texture = new THREE.Texture(image, new THREE.UVMapping(), THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.LinearMipMapLinearFilter);
 
-        return new THREE.MeshBasicMaterial({
+        return new THREE.MeshLambertMaterial({
             map: texture,
             //transparent true
-            //ambient: 0xbbbbbb
         });
     };
 
     mc.Minecraft = function (container, width, height) {
-        this.renderer = new THREE.WebGLRenderer({
-            clearColor: 0xbfd1e5
-        });
+        this.renderer = new THREE.WebGLRenderer();
         this.renderer.setSize(width, height);
+        this.renderer.setClearColor(0xbfd1e5);
 
         this.element = this.renderer.domElement;
         this.element.setAttribute('tabindex', '0');
@@ -137,16 +61,19 @@
 
         this.scene = new THREE.Scene();
 
-        /*var directionalLight = new THREE.DirectionalLight( 0xccccaa, 2 );
-        directionalLight.position.set( 0, 0, 3 ).normalize();
-        this.scene.add(directionalLight);*/
+        this.scene.add(new THREE.AmbientLight(0x666644));
 
-        this.world = new mc.World(this, window.region);
-        this.player = new mc.Player(this.world, 'Player', new THREE.PerspectiveCamera(80, width / height, 0.001, 20000));
+        var light = new THREE.PointLight(0xffffff, 1, 5);
+        this.scene.add(light);
+        /*var l1 = new THREE.Mesh(new THREE.SphereGeometry( 0.125, 16, 8 ), new THREE.MeshBasicMaterial({ color: 0xff0040 }));
+        l1.position = light.position;
+        this.scene.add(l1);*/
 
-        this.player.camera.position.x = 8;
-        this.player.camera.position.y = 164;
-        this.player.camera.position.z = 8;
+        this.world = new mc.World(this, region);
+        this.player = new mc.Player(this.world, 'Player', new THREE.PerspectiveCamera(120, width / height, 0.001, 20000));
+
+        this.player.camera.position.set(0, 80, 0);
+        light.position = this.player.object.position;
 
         /*for (var x = 0; x < 5; x++) {
             for (var y = 0; y < 5; y++) {
@@ -188,6 +115,14 @@
         this.lat = 0;
         this.phi = 0;
         this.theta = 0;
+
+        this.world.mc.element.addEventListener('keypress', function (e) {
+            switch (String.fromCharCode(e.keyCode)) {
+            case 'f':
+                this.flying = !this.flying;
+                break;
+            }
+        }.bind(this));
     };
     extend(mc.Player.prototype, {
         step: function () {
@@ -206,16 +141,26 @@
             targetPosition.x = position.x + 100 * Math.sin(this.phi) * Math.cos(this.theta);
             targetPosition.y = position.y + 100 * Math.cos(this.phi);
             targetPosition.z = position.z + 100 * Math.sin(this.phi) * Math.sin(this.theta);
-
             this.object.lookAt(targetPosition);
 
+
             var speed = 0.1;
-            this.velocity.y -= 0.01;
 
-            this.velocity.set(0, this.velocity.y, 0);
-
-            if (this.world.mc.keysDown[32] && this.onGround) { // jump
-                this.velocity.y = Math.sqrt(0.02);
+            if (this.flying) {
+                this.velocity.set(0, 0, 0);
+                if (this.world.mc.keysDown[32]) { // up
+                    this.velocity.y = speed;
+                }
+                if (this.world.mc.keysDown[16]) { // down
+                    this.velocity.y = -speed;
+                }
+            } else {
+                this.velocity.x = 0;
+                this.velocity.y -= 0.01;
+                this.velocity.z = 0;
+                if (this.world.mc.keysDown[32] && this.onGround) { // jump
+                    this.velocity.y = Math.sqrt(0.02);
+                }
             }
 
             if (this.world.mc.keysDown[65]) { // left
@@ -235,8 +180,35 @@
                 this.velocity.z += Math.sin(this.theta) * -speed;
             }
 
-            var oldbb = this.getBoundingBox();
             this.object.position.add(this.velocity);
+
+            if (!this.flying) {
+                this.correctCollision();
+            }
+
+            var chunks = this.world.chunks;
+            var cx = this.object.position.x >> 4;
+            var cy = this.object.position.z >> 4;
+            var chunk;
+
+            var self = this;
+            Object.keys(chunks).forEach(function (c) {
+                var chunk = chunks[c];
+                if ((chunk.x < cx - 2) || (chunk.x > cx + 2) || (chunk.y < cy - 2) || (chunk.y > cy + 2)) {
+                    self.world.unloadChunk(chunk.x, chunk.y);
+                }
+            });
+            for (var x = cx - 2; x < cx + 2; x++) {
+                for (var y = cy - 2; y < cy + 2; y++) {
+                    if (!this.world.getChunk(x, y)) {
+                        this.world.loadChunk(x, y);
+                    }
+                }
+            }
+            this.world.rebuildDirty();
+        },
+        correctCollision: function () {
+            var oldbb = this.getBoundingBox().translate(this.velocity.clone().negate());
             var newbb = this.getBoundingBox(),
                 bb = oldbb.clone().union(newbb),
                 blocks = [];
@@ -309,28 +281,6 @@
                     min.axis = -1;
                 }
             }
-
-            var chunks = this.world.chunks;
-            var cx = this.object.position.x >> 4;
-            var cy = this.object.position.z >> 4;
-            var chunk;
-
-            var self = this;
-            Object.keys(chunks).forEach(function (c) {
-                var chunk = chunks[c];
-                if ((chunk.x < cx - 4) || (chunk.x > cx + 4) || (chunk.y < cy - 4) || (chunk.y > cy + 4)) {
-                console.log(chunk)
-                    self.world.unloadChunk(chunk.x, chunk.y);
-                }
-            });
-            for (var x = cx - 3; x < cx + 3; x++) {
-                for (var y = cy - 3; y < cy + 3; y++) {
-                    if (!this.world.getChunk(x, y)) {
-                        this.world.loadChunk(x, y);
-                    }
-                }
-            }
-            this.world.rebuildDirty();
         },
         getBoundingBox: function () {
             var p = this.object.position;
@@ -372,7 +322,9 @@
             console.log(x, y);
         },
         unloadChunk: function (x, y) {
-            this.mc.scene.remove(this.getChunk(x, y).mesh);
+            var mesh = this.getChunk(x, y).mesh;
+            this.mc.scene.remove(mesh);
+            mesh.geometry.dispose();
             delete this.chunks[this.chunkKey(x, y)];
         },
         chunkKey: function (x, y) {
@@ -476,13 +428,12 @@
         isBlockSolid: function (x, y, z) {
             var id = this.getBlock(x, y, z);
             if (mc.models.blocks[id]) {
-                return mc.models.blocks[id][0];
+                return mc.models.blocks[id].solid;
             }
             return false;
         },
 
         buildMesh: function () {
-            var p = '' + new Date();
             var getBlock = function (x, y, z) {
                 return this.world.getBlock(this.x * mc.CHUNK_SIZE + x, y, this.y * mc.CHUNK_SIZE + z);
             }.bind(this);
@@ -538,37 +489,37 @@
 
                             if (f.px) {
                                 face = new THREE.Face4(v5, v6, v7, v8);
-                                face.materialIndex = mc.models.blocks[id][1][0];
+                                face.materialIndex = mc.models.blocks[id].faces[0];
                                 geometry.faces.push(face);
                                 geometry.faceVertexUvs[0].push(uvs);
                             }
                             if (f.nx) {
                                 face = new THREE.Face4(v4, v3, v2, v1);
-                                face.materialIndex = mc.models.blocks[id][1][1];
+                                face.materialIndex = mc.models.blocks[id].faces[1];
                                 geometry.faces.push(face);
                                 geometry.faceVertexUvs[0].push(uvs);
                             }
                             if (f.py) {
                                 face = new THREE.Face4(v2, v3, v7, v6);
-                                face.materialIndex = mc.models.blocks[id][1][2];
+                                face.materialIndex = mc.models.blocks[id].faces[2];
                                 geometry.faces.push(face);
                                 geometry.faceVertexUvs[0].push(uvs);
                             }
                             if (f.ny) {
                                 face = new THREE.Face4(v5, v8, v4, v1);
-                                face.materialIndex = mc.models.blocks[id][1][3];
+                                face.materialIndex = mc.models.blocks[id].faces[3];
                                 geometry.faces.push(face);
                                 geometry.faceVertexUvs[0].push(uvs);
                             }
                             if (f.pz) {
                                 face = new THREE.Face4(v8, v7, v3, v4);
-                                face.materialIndex = mc.models.blocks[id][1][4];
+                                face.materialIndex = mc.models.blocks[id].faces[4];
                                 geometry.faces.push(face);
                                 geometry.faceVertexUvs[0].push(uvs);
                             }
                             if (f.nz) {
                                 face = new THREE.Face4(v1, v2, v6, v5);
-                                face.materialIndex = mc.models.blocks[id][1][5];
+                                face.materialIndex = mc.models.blocks[id].faces[5];
                                 geometry.faces.push(face);
                                 geometry.faceVertexUvs[0].push(uvs);
                             }
@@ -583,10 +534,11 @@
                     }
                 }
             }
-
+            geometry.computeFaceNormals();
+            geometry.computeVertexNormals();
             this.oldMesh = this.mesh;
             this.dirty = false;
-            this.mesh = new THREE.Mesh(geometry, new THREE.MeshFaceMaterial(mc.textures.terrain));
+            this.mesh = new THREE.Mesh(geometry, new THREE.MeshFaceMaterial(mc.materials.terrain));
             this.world.updateGeometry(this);
         }
     });
