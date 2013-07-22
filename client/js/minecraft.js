@@ -11,19 +11,14 @@
         return ((n1 % n2) + n2) % n2;
     }
 
-    mc.loadTexture = function (path) {
-        var image = new Image();
-        image.onload = function () {
-            texture.needsUpdate = true;
-        };
-        image.src = path;
-
-        var texture = new THREE.Texture(image, new THREE.UVMapping(), THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.LinearMipMapLinearFilter);
-
-        return new THREE.MeshLambertMaterial({
-            map: texture,
-            //transparent true
-        });
+    mc.textures = {
+        terrain: THREE.ImageUtils.loadTexture('img/terrain.png')
+    };
+    mc.textures.terrain.magFilter = THREE.NearestFilter;
+    mc.shaders.terrain.map = mc.textures.terrain;
+    mc.shaders.terrain.uniforms.map.value = mc.textures.terrain;
+    mc.materials = {
+        terrain: mc.shaders.terrain
     };
 
     mc.Minecraft = function (container, width, height) {
@@ -63,7 +58,7 @@
 
         this.scene.add(new THREE.AmbientLight(0x666644));
 
-        var light = new THREE.PointLight(0xffffff, 1, 5);
+        var light = new THREE.PointLight(0x4c3d26, 6, 8);
         this.scene.add(light);
         /*var l1 = new THREE.Mesh(new THREE.SphereGeometry( 0.125, 16, 8 ), new THREE.MeshBasicMaterial({ color: 0xff0040 }));
         l1.position = light.position;
@@ -72,15 +67,8 @@
         this.world = new mc.World(this, region);
         this.player = new mc.Player(this.world, 'Player', new THREE.PerspectiveCamera(120, width / height, 0.001, 20000));
 
-        this.player.camera.position.set(0, 80, 0);
+        this.player.camera.position.set(318, 89, 143);
         light.position = this.player.object.position;
-
-        /*for (var x = 0; x < 5; x++) {
-            for (var y = 0; y < 5; y++) {
-                this.world.loadChunk(x, y);
-            }
-        }
-        this.world.rebuildDirty();*/
 
         container.appendChild(this.renderer.domElement);
         this.render();
@@ -115,6 +103,7 @@
         this.lat = 0;
         this.phi = 0;
         this.theta = 0;
+        this.speed = 0.1;
 
         this.world.mc.element.addEventListener('keypress', function (e) {
             switch (String.fromCharCode(e.keyCode)) {
@@ -143,16 +132,13 @@
             targetPosition.z = position.z + 100 * Math.sin(this.phi) * Math.sin(this.theta);
             this.object.lookAt(targetPosition);
 
-
-            var speed = 0.1;
-
             if (this.flying) {
                 this.velocity.set(0, 0, 0);
                 if (this.world.mc.keysDown[32]) { // up
-                    this.velocity.y = speed;
+                    this.velocity.y = this.speed;
                 }
                 if (this.world.mc.keysDown[16]) { // down
-                    this.velocity.y = -speed;
+                    this.velocity.y = -this.speed;
                 }
             } else {
                 this.velocity.x = 0;
@@ -164,20 +150,20 @@
             }
 
             if (this.world.mc.keysDown[65]) { // left
-                this.velocity.x += Math.sin(this.theta) * speed;
-                this.velocity.z += -Math.cos(this.theta) * speed;
+                this.velocity.x += Math.sin(this.theta) * this.speed;
+                this.velocity.z += -Math.cos(this.theta) * this.speed;
             }
             if (this.world.mc.keysDown[68]) { // right
-                this.velocity.x += -Math.sin(this.theta) * speed;
-                this.velocity.z += Math.cos(this.theta) * speed;
+                this.velocity.x += -Math.sin(this.theta) * this.speed;
+                this.velocity.z += Math.cos(this.theta) * this.speed;
             }
             if (this.world.mc.keysDown[87]) { // forward
-                this.velocity.x += Math.cos(this.theta) * speed;
-                this.velocity.z += Math.sin(this.theta) * speed;
+                this.velocity.x += Math.cos(this.theta) * this.speed;
+                this.velocity.z += Math.sin(this.theta) * this.speed;
             }
             if (this.world.mc.keysDown[83]) { // backward
-                this.velocity.x += Math.cos(this.theta) * -speed;
-                this.velocity.z += Math.sin(this.theta) * -speed;
+                this.velocity.x += Math.cos(this.theta) * -this.speed;
+                this.velocity.z += Math.sin(this.theta) * -this.speed;
             }
 
             this.object.position.add(this.velocity);
@@ -194,12 +180,12 @@
             var self = this;
             Object.keys(chunks).forEach(function (c) {
                 var chunk = chunks[c];
-                if ((chunk.x < cx - 2) || (chunk.x > cx + 2) || (chunk.y < cy - 2) || (chunk.y > cy + 2)) {
+                if ((chunk.x < cx - 4) || (chunk.x > cx + 4) || (chunk.y < cy - 4) || (chunk.y > cy + 4)) {
                     self.world.unloadChunk(chunk.x, chunk.y);
                 }
             });
-            for (var x = cx - 2; x < cx + 2; x++) {
-                for (var y = cy - 2; y < cy + 2; y++) {
+            for (var x = cx - 3; x < cx + 3; x++) {
+                for (var y = cy - 3; y < cy + 3; y++) {
                     if (!this.world.getChunk(x, y)) {
                         this.world.loadChunk(x, y);
                     }
@@ -223,7 +209,8 @@
             }
 
             function intersects(a, b) {
-                return !(a.max.x <= b.min.x || a.min.x >= b.max.x || a.max.y <= b.min.y || a.min.y >= b.max.y)
+                var epsilon = 0.0001;
+                return !(a.max.x <= b.min.x + epsilon || a.min.x >= b.max.x - epsilon || a.max.y <= b.min.y + epsilon || a.min.y >= b.max.y - epsilon)
             }
 
             var dir;
@@ -265,7 +252,7 @@
                                 min = {
                                     axis: a,
                                     time: minT,
-                                    pos: n + (this.velocity[axis[0]] < 0 ? axis[3] : axis[4])
+                                    pos: n + (this.velocity[axis[0]] < 0 ? axis[3] + 0.0001: axis[4] - 0.0001)
                                 }
                             }
                         }
@@ -319,12 +306,16 @@
             if (c) c.dirty = true;
             c = this.getChunk(x, y - 1);
             if (c) c.dirty = true;
-            console.log(x, y);
         },
         unloadChunk: function (x, y) {
             var mesh = this.getChunk(x, y).mesh;
+            if (!mesh) {
+                return;
+            }
             this.mc.scene.remove(mesh);
-            mesh.geometry.dispose();
+            for (var i = 0; i < 16; i++) {
+                mesh.children[i].geometry.dispose();
+            }
             delete this.chunks[this.chunkKey(x, y)];
         },
         chunkKey: function (x, y) {
@@ -376,7 +367,6 @@
         this.data = data;
         this.stream = new Streams.ReadStream(data);
         this.chunks = [];
-        console.log(this);
     },
     extend(mc.AnvilChunkLoader.prototype, {
         load: function (x, y) {
@@ -420,7 +410,7 @@
         },
         getBlock: function (x, y, z) {
             if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.WORLD_HEIGHT || z < 0 || z >= mc.CHUNK_SIZE) {
-                return 0;
+                return -1;
             }
             return this.data[z + x * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE];
         },
@@ -429,117 +419,42 @@
             var id = this.getBlock(x, y, z);
             if (mc.models.blocks[id]) {
                 return mc.models.blocks[id].solid;
+            } else if (id === -1) {
+                return true;
             }
             return false;
         },
 
         buildMesh: function () {
-            var getBlock = function (x, y, z) {
-                return this.world.getBlock(this.x * mc.CHUNK_SIZE + x, y, this.y * mc.CHUNK_SIZE + z);
-            }.bind(this);
-            var isBlockSolid = function (x, y, z) {
-                return this.world.isBlockSolid(this.x * mc.CHUNK_SIZE + x, y, this.y * mc.CHUNK_SIZE + z);
-            }.bind(this);
-
-            var geometry = new THREE.Geometry();
-            var id,
-                v1,
-                v2,
-                v3,
-                v4,
-                v5,
-                v6,
-                face;
-            var uvs = [
-                new THREE.Vector2(0, 0),
-                new THREE.Vector2(0, 1),
-                new THREE.Vector2(1, 1),
-                new THREE.Vector2(1, 0)
-            ];
-            for (var x = 0; x < 16; x++) {
-                for (var y = 0; y < 256; y++) {
-                    for (var z = 0; z < 16; z++) {
-                        id = this.getBlock(x, y, z);
-                        if (mc.models.blocks[id]) {
-                            var f = {
-                                px: !isBlockSolid(x + 1, y, z),
-                                nx: !isBlockSolid(x - 1, y, z),
-                                py: !isBlockSolid(x, y + 1, z),
-                                ny: !isBlockSolid(x, y - 1, z),
-                                pz: !isBlockSolid(x, y, z + 1),
-                                nz: !isBlockSolid(x, y, z - 1)
-                            };
-
-                            v1 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x, y, z));
-                            v2 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x, y + 1, z));
-                            v3 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x, y + 1, z + 1));
-                            v4 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x, y, z + 1));
-                            v5 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x + 1, y, z));
-                            v6 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x + 1, y + 1, z));
-                            v7 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x + 1, y + 1, z + 1));
-                            v8 = geometry.vertices.length;
-                            geometry.vertices.push(new THREE.Vector3(x + 1, y, z + 1));
-
-                            if (f.px) {
-                                face = new THREE.Face4(v5, v6, v7, v8);
-                                face.materialIndex = mc.models.blocks[id].faces[0];
-                                geometry.faces.push(face);
-                                geometry.faceVertexUvs[0].push(uvs);
-                            }
-                            if (f.nx) {
-                                face = new THREE.Face4(v4, v3, v2, v1);
-                                face.materialIndex = mc.models.blocks[id].faces[1];
-                                geometry.faces.push(face);
-                                geometry.faceVertexUvs[0].push(uvs);
-                            }
-                            if (f.py) {
-                                face = new THREE.Face4(v2, v3, v7, v6);
-                                face.materialIndex = mc.models.blocks[id].faces[2];
-                                geometry.faces.push(face);
-                                geometry.faceVertexUvs[0].push(uvs);
-                            }
-                            if (f.ny) {
-                                face = new THREE.Face4(v5, v8, v4, v1);
-                                face.materialIndex = mc.models.blocks[id].faces[3];
-                                geometry.faces.push(face);
-                                geometry.faceVertexUvs[0].push(uvs);
-                            }
-                            if (f.pz) {
-                                face = new THREE.Face4(v8, v7, v3, v4);
-                                face.materialIndex = mc.models.blocks[id].faces[4];
-                                geometry.faces.push(face);
-                                geometry.faceVertexUvs[0].push(uvs);
-                            }
-                            if (f.nz) {
-                                face = new THREE.Face4(v1, v2, v6, v5);
-                                face.materialIndex = mc.models.blocks[id].faces[5];
-                                geometry.faces.push(face);
-                                geometry.faceVertexUvs[0].push(uvs);
-                            }
-                            /*if (f.px || f.nx || f.py || f.ny || f.pz || f.nz) {
-                                var block = new THREE.Mesh(new THREE.CubeGeometry(1, 1, 1, 1, 1, 1, mc.models.blocks[id][1], f), new THREE.MeshFaceMaterial());
-                                block.position.x = x + 0.5;
-                                block.position.y = y + 0.5;
-                                block.position.z = z + 0.5;
-                                THREE.GeometryUtils.merge(geometry, block);
-                            }*/
-                        }
-                    }
-                }
+            if (!this.data.buffer) {
+                return;
             }
-            geometry.computeFaceNormals();
-            geometry.computeVertexNormals();
-            this.oldMesh = this.mesh;
-            this.dirty = false;
-            this.mesh = new THREE.Mesh(geometry, new THREE.MeshFaceMaterial(mc.materials.terrain));
-            this.world.updateGeometry(this);
+            var self = this;
+            var worker = new Worker('js/worker.js');
+            worker.onmessage = function (e) {
+                var obj = new THREE.Object3D();
+                self.data = e.data.data;
+                for (var i = 0; i < 16; i++) {
+                    var geometry = new THREE.BufferGeometry();
+                    geometry.dynamic = true;
+                    geometry.attributes = e.data.attributes[i];
+                    geometry.offsets = [{
+                        start: 0,
+                        count: geometry.attributes.index.array.length,
+                        index: 0
+                    }];
+                    geometry.computeBoundingBox();
+                    geometry.computeBoundingSphere();
+                    geometry.computeVertexNormals();
+                    var mesh = new THREE.Mesh(geometry, mc.materials.terrain);
+                    obj.add(mesh);
+                }
+                self.oldMesh = self.mesh;
+                self.dirty = false;
+                self.mesh = obj;
+                self.world.updateGeometry(self);
+            }
+            worker.postMessage(this.data, [self.data.buffer]);
         }
     });
     
@@ -616,5 +531,5 @@
             }    
         }
     };
-}) (window.mc = {});
+}) (mc);
  

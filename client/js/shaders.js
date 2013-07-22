@@ -1,12 +1,14 @@
-mc.shaders = {};
+mc = {shaders: {}, models: {}};
 mc.shaders.terrain = new THREE.ShaderMaterial({
+    attributes: {
+        uv: {type: 'v2', value: null}
+    },
     uniforms: THREE.UniformsUtils.merge([
         THREE.ShaderLib['lambert'].uniforms,
         {
-            color: {type: 'c', value: new THREE.Color(0x1abf00)}
-        }]),
-    //vertexShader: syncLoad('shaders/grass.vert'),
-    //fragmentShader: syncLoad('shaders/grass.frag'),
+            //color: {type: 'c', value: new THREE.Color(0x1abf00)}
+        }
+    ]),
     vertexShader: [
         '#define LAMBERT',
         'varying vec3 vLightFront;',
