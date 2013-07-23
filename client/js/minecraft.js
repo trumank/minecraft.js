@@ -149,22 +149,26 @@
                 }
             }
 
+            var horizontal = new THREE.Vector3();
+            var c = Math.cos(this.theta);
+            var s = Math.sin(this.theta);
             if (this.world.mc.keysDown[65]) { // left
-                this.velocity.x += Math.sin(this.theta) * this.speed;
-                this.velocity.z += -Math.cos(this.theta) * this.speed;
+                horizontal.x += s;
+                horizontal.z -= c;
             }
             if (this.world.mc.keysDown[68]) { // right
-                this.velocity.x += -Math.sin(this.theta) * this.speed;
-                this.velocity.z += Math.cos(this.theta) * this.speed;
+                horizontal.x -= s;
+                horizontal.z += c;
             }
             if (this.world.mc.keysDown[87]) { // forward
-                this.velocity.x += Math.cos(this.theta) * this.speed;
-                this.velocity.z += Math.sin(this.theta) * this.speed;
+                horizontal.x += c;
+                horizontal.z += s;
             }
             if (this.world.mc.keysDown[83]) { // backward
-                this.velocity.x += Math.cos(this.theta) * -this.speed;
-                this.velocity.z += Math.sin(this.theta) * -this.speed;
+                horizontal.x -= c;
+                horizontal.z -= s;
             }
+            this.velocity.add(horizontal.normalize().multiplyScalar(this.speed));
 
             this.object.position.add(this.velocity);
 
