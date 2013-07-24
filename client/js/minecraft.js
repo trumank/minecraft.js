@@ -178,20 +178,23 @@
 
             var chunks = this.world.chunks;
             var cx = this.object.position.x >> 4;
-            var cy = this.object.position.z >> 4;
+            var cy = this.object.position.y >> 4;
+            var cz = this.object.position.z >> 4;
             var chunk;
 
             var self = this;
             Object.keys(chunks).forEach(function (c) {
                 var chunk = chunks[c];
-                if ((chunk.x < cx - 4) || (chunk.x > cx + 4) || (chunk.y < cy - 4) || (chunk.y > cy + 4)) {
-                    self.world.unloadChunk(chunk.x, chunk.y);
+                if ((chunk.x < cx - 4) || (chunk.x > cx + 4) || (chunk.y < cy - 4) || (chunk.y > cy + 4)  || (chunk.z < cz - 4) || (chunk.z > cz + 4)) {
+                    self.world.unloadChunk(chunk.x, chunk.y, chunk.z);
                 }
             });
             for (var x = cx - 3; x < cx + 3; x++) {
                 for (var y = cy - 3; y < cy + 3; y++) {
-                    if (!this.world.getChunk(x, y)) {
-                        this.world.loadChunk(x, y);
+                    for (var z = cz - 3; z < cz + 3; z++) {
+                        if (!this.world.getChunk(x, y, z)) {
+                            this.world.loadChunk(x, y, z);
+                        }
                     }
                 }
             }
@@ -293,37 +296,46 @@
     mc.World = function (inst, data) {
         this.mc = inst;
         this.chunks = {};
-        this.chunkLoader = new mc.AnvilChunkLoader(this, data);
+        this.chunkLoader = new mc.AnvilChunkLoader(data);
+        this.worker = new Worker('js/worker.js');
+        var self = this;
+        this.worker.onmessage = function (e) {
+            var pos = e.data.position;
+            var chunk = self.getChunk(pos.x, pos.y, pos.z);
+            if (chunk) {
+                chunk.setGeometryBuffer(e.data);
+            }
+        };
     };
     mc.CHUNK_SIZE = 16;
-    mc.WORLD_HEIGHT = 256;
     extend(mc.World.prototype, {
-        loadChunk: function (x, y) {
-            var chunk = new mc.Chunk(this, x, y, this.chunkLoader.load(x, y));
-            this.setChunk(x, y, chunk);
+        loadChunk: function (x, y, z) {
+            var chunk = new mc.Chunk(this, x, y, z, this.chunkLoader.load(x, y, z));
+            this.setChunk(x, y, z, chunk);
 
-            var c = this.getChunk(x + 1, y);
+            var c;
+            c = this.getChunk(x + 1, y, z);
             if (c) c.dirty = true;
-            c = this.getChunk(x - 1, y);
+            c = this.getChunk(x - 1, y, z);
             if (c) c.dirty = true;
-            c = this.getChunk(x, y + 1);
+            c = this.getChunk(x, y + 1, z);
             if (c) c.dirty = true;
-            c = this.getChunk(x, y - 1);
+            c = this.getChunk(x, y - 1, z);
+            if (c) c.dirty = true;
+            c = this.getChunk(x, y, z + 1);
+            if (c) c.dirty = true;
+            c = this.getChunk(x, y, z - 1);
             if (c) c.dirty = true;
         },
-        unloadChunk: function (x, y) {
-            var mesh = this.getChunk(x, y).mesh;
-            if (!mesh) {
-                return;
+        unloadChunk: function (x, y, z) {
+            var mesh = this.getChunk(x, y, z).mesh;
+            if (mesh) {
+                this.mc.scene.remove(mesh);
             }
-            this.mc.scene.remove(mesh);
-            for (var i = 0; i < 16; i++) {
-                mesh.children[i].geometry.dispose();
-            }
-            delete this.chunks[this.chunkKey(x, y)];
+            delete this.chunks[this.chunkKey(x, y, z)];
         },
-        chunkKey: function (x, y) {
-            return x + '_' + y;
+        chunkKey: function (x, y, z) {
+            return x + '_' + y + '_' + z;
         },
         rebuildDirty: function () {
             var chunks = this.chunks;
@@ -335,24 +347,26 @@
             });
         },
 
-        getChunk: function (x, y) {
-            return this.chunks[this.chunkKey(x, y)];
+        getChunk: function (x, y, z) {
+            return this.chunks[this.chunkKey(x, y, z)];
         },
-        setChunk: function (x, y, chunk) {
-            return this.chunks[this.chunkKey(x, y)] = chunk;
+        setChunk: function (x, y, z, chunk) {
+            return this.chunks[this.chunkKey(x, y, z)] = chunk;
         },
 
         getBlock: function (x, y, z) {
             var mx = mod(x, mc.CHUNK_SIZE);
+            var my = mod(y, mc.CHUNK_SIZE);
             var mz = mod(z, mc.CHUNK_SIZE);
-            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
-            return chunk ? chunk.getBlock(mx, y, mz) : 0;
+            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+            return chunk ? chunk.getBlock(mx, my, mz) : 0;
         },
         isBlockSolid: function (x, y, z) {
             var mx = mod(x, mc.CHUNK_SIZE);
+            var my = mod(y, mc.CHUNK_SIZE);
             var mz = mod(z, mc.CHUNK_SIZE);
-            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
-            return chunk ? chunk.isBlockSolid(mx, y, mz) : 0;
+            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+            return chunk ? chunk.isBlockSolid(mx, my, mz) : 0;
         },
 
         updateGeometry: function (chunk) {
@@ -361,50 +375,50 @@
             }
 
             chunk.mesh.position.x = chunk.x * mc.CHUNK_SIZE;
-            chunk.mesh.position.z = chunk.y * mc.CHUNK_SIZE;
+            chunk.mesh.position.y = chunk.y * mc.CHUNK_SIZE;
+            chunk.mesh.position.z = chunk.z * mc.CHUNK_SIZE;
             this.mc.scene.add(chunk.mesh);
+        },
+        buildGeometryBuffer: function (chunk) {
+            this.worker.postMessage([{
+                data: chunk.data,
+                position: {x: chunk.x, y: chunk.y, z: chunk.z}
+            }], [chunk.data.buffer]);
         }
     });
     
-    mc.AnvilChunkLoader = function (world, data) {
-        this.world = world;
+    mc.AnvilChunkLoader = function (data) {
         this.data = data;
         this.stream = new Streams.ReadStream(data);
-        this.chunks = [];
+        this.chunks = {};
     },
     extend(mc.AnvilChunkLoader.prototype, {
-        load: function (x, y) {
-            this.stream.index = 4 * (x + y * 32);
+        load: function (x, y, z) {
+            if (this.chunks[x + '_' + y + '_' + z]) {
+                return this.chunks[x + '_' + y + '_' + z];
+            }
+            this.stream.index = 4 * (x + z * 32);
             var offset = this.stream.uint24();
-            if (!offset || x < 0 || y < 0) {
-                return new Uint8Array(16*16*256);
+            if (!offset || x < 0 || y < 0 || x >= 32 || y >= 32) {
+                return new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE);
             }
             this.stream.index = offset * 0x1000;
             var size = this.stream.uint32();
             var method = this.stream.uint8();
-            var chunk = mc.nbt.read(new Zlib.Inflate(new Uint8Array(this.stream.arrayBuffer(size))).decompress());
-            var data = new Uint8Array(16*16*256);
-            var sections = [];
-            chunk.Level.Sections.forEach(function (s) {
-                sections[s.Y] = s;
-            });
-            var section;
-            for (var _x = 0; _x < 16; _x++) {
-                for (var _y = 0; _y < 256; _y++) {
-                    for (var _z = 0; _z < 16; _z++) {
-                        section = sections[_y >> 4];
-                        data[_z + _x * 16 + _y * 256] = section ? section.Blocks[(((_y % 16) * 16 + _z) * 16 + _x)] : 0;
-                    }
-                }
+            var level = mc.nbt.read(new Zlib.Inflate(new Uint8Array(this.stream.arrayBuffer(size))).decompress()).Level;
+            var sections = level.Sections;
+            for (var i = 0; i < sections.length; ++i) {
+                this.chunks[x + '_' + sections[i].Y + '_' + z] = sections[i].Blocks;
             }
-            return data;
+            return this.chunks[x + '_' + y + '_' + z] || (this.chunks[x + '_' + y + '_' + z] = new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE));
         }
     }),
 
-    mc.Chunk = function (world, x, y, data) {
+    mc.Chunk = function (world, x, y, z, data) {
         this.world = world;
         this.x = x;
         this.y = y;
+        this.z = z;
         this.data = data;
         this.dirty = true;
     }
@@ -413,10 +427,10 @@
             this.data[z + x * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE] = id;
         },
         getBlock: function (x, y, z) {
-            if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.WORLD_HEIGHT || z < 0 || z >= mc.CHUNK_SIZE) {
+            if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.CHUNK_SIZE || z < 0 || z >= mc.CHUNK_SIZE) {
                 return -1;
             }
-            return this.data[z + x * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE];
+            return this.data[x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE];
         },
         
         isBlockSolid: function (x, y, z) {
@@ -433,32 +447,28 @@
             if (!this.data.buffer) {
                 return;
             }
-            var self = this;
-            var worker = new Worker('js/worker.js');
-            worker.onmessage = function (e) {
-                var obj = new THREE.Object3D();
-                self.data = e.data.data;
-                for (var i = 0; i < 16; i++) {
-                    var geometry = new THREE.BufferGeometry();
-                    geometry.dynamic = true;
-                    geometry.attributes = e.data.attributes[i];
-                    geometry.offsets = [{
-                        start: 0,
-                        count: geometry.attributes.index.array.length,
-                        index: 0
-                    }];
-                    geometry.computeBoundingBox();
-                    geometry.computeBoundingSphere();
-                    geometry.computeVertexNormals();
-                    var mesh = new THREE.Mesh(geometry, mc.materials.terrain);
-                    obj.add(mesh);
-                }
-                self.oldMesh = self.mesh;
-                self.dirty = false;
-                self.mesh = obj;
-                self.world.updateGeometry(self);
-            }
-            worker.postMessage(this.data, [self.data.buffer]);
+            this.world.buildGeometryBuffer(this);
+        },
+        setGeometryBuffer: function (res) {
+            this.data = res.data;
+
+            var geometry = new THREE.BufferGeometry();
+            geometry.dynamic = true;
+            geometry.attributes = res.attributes;
+            geometry.offsets = [{
+                start: 0,
+                count: geometry.attributes.index.array.length,
+                index: 0
+            }];
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+            geometry.computeVertexNormals();
+            var mesh = new THREE.Mesh(geometry, mc.materials.terrain);
+
+            this.oldMesh = this.mesh;
+            this.dirty = false;
+            this.mesh = mesh;
+            this.world.updateGeometry(this);
         }
     });
     
@@ -493,9 +503,9 @@
                 },
                 7: function (stream) {
                     var size = stream.int32();
-                    var array = [];
-                    while (size--) {
-                        array.push(stream.int8());
+                    var array = new Uint8Array(size);
+                    for (var i = 0; i < size; ++i) {
+                        array[i] = stream.int8();
                     }
                     return array;
                 },
@@ -526,9 +536,9 @@
                 },
                 11: function (stream) {
                     var size = stream.int32();
-                    var array = [];
-                    while (size--) {
-                        array.push(stream.int32());
+                    var array = new Uint32Array(size);
+                    for (var i = 0; i < size; ++i) {
+                        array[i] = stream.int32();
                     }
                     return array;
                 }

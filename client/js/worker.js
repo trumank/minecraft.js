@@ -1,11 +1,31 @@
 importScripts('blocks.js', 'dynamicArray.js');
 
+var chunkSize = 16;
 var textureWidth = 16;
 var textureHeight = 16;
 var incX = [0, 0, 1 / textureWidth, 1 / textureWidth];
 var incY = [0, 1 / textureHeight, 1 / textureHeight, 0];
 
-function build(data, height) {
+var queue = [];
+
+function next() {
+    if (queue.length > 0) {
+        var chunk = queue.pop();
+        postMessage({
+            position: chunk.position,
+            attributes: build(chunk.data),
+            data: chunk.data
+        }, [chunk.data.buffer]);
+        setTimeout(next, 0);
+    }
+}
+
+self.onmessage = function(e) {
+    queue = e.data.concat(queue);
+    next();
+};
+
+function build(data) {
     var r = 100;
     var indecies = new DynamicArray(Int16Array, r * 3);
     var positions = new DynamicArray(Float32Array, r * 3 * 3);
@@ -34,10 +54,10 @@ function build(data, height) {
         indecies.push(d);
     }
     function getBlock(x, y, z) {
-        if (x < 0 || x >= 16 || y < 0 || y >= 256 || z < 0 || z >= 16) {
+        if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
             return -1;
         }
-        return data[z + x * 16 + y * 16 * 16];
+        return data[x + z * chunkSize + y * chunkSize * chunkSize];
     }
     function isBlockSolid(x, y, z) {
         var id = getBlock(x, y, z);
@@ -49,9 +69,9 @@ function build(data, height) {
         return false;
     }
     var id, faces, i;
-    for (var x = 0; x < 16; x++) {
-        for (var y = height; y < height + 16; y++) {
-            for (var z = 0; z < 16; z++) {
+    for (var x = 0; x < chunkSize; x++) {
+        for (var y = 0; y < chunkSize; y++) {
+            for (var z = 0; z < chunkSize; z++) {
                 id = getBlock(x, y, z);
                 if (self.blocks[id]) {
                     faces = self.blocks[id].faces;
@@ -122,14 +142,3 @@ function build(data, height) {
         }
     };
 }
-
-self.onmessage = function(e) {
-    var attributes = [];
-    for (var i = 0; i < 16; i++) {
-        attributes[i] = build(e.data, i * 16);
-    }
-    postMessage({
-        attributes: attributes,
-        data: e.data
-    }, [e.data.buffer]);
-};
