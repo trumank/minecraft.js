@@ -71,6 +71,10 @@
         light.position = this.player.object.position;
 
         container.appendChild(this.renderer.domElement);
+        this.stats = new Stats();
+        this.stats.domElement.style.position = 'absolute';
+        this.stats.domElement.style.top = '0px';
+        container.appendChild(this.stats.domElement);
         this.render();
     };
     extend(mc.Minecraft.prototype, {
@@ -81,6 +85,7 @@
                 this.player.step();
                 this.step();
                 this.renderer.render(this.scene, this.player.camera);
+                this.stats.update();
             }).bind(this);
             render();
         },
@@ -353,7 +358,22 @@
         setChunk: function (x, y, z, chunk) {
             return this.chunks[this.chunkKey(x, y, z)] = chunk;
         },
+        getChunkContainingBlock: function (x, y, z) {
+            var mx = mod(x, mc.CHUNK_SIZE);
+            var my = mod(y, mc.CHUNK_SIZE);
+            var mz = mod(z, mc.CHUNK_SIZE);
+            return this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+        },
 
+        setBlock: function (x, y, z, id) {
+            var mx = mod(x, mc.CHUNK_SIZE);
+            var my = mod(y, mc.CHUNK_SIZE);
+            var mz = mod(z, mc.CHUNK_SIZE);
+            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+            if (chunk) {
+                chunk.setBlock(mx, my, mz, id);
+            }
+        },
         getBlock: function (x, y, z) {
             var mx = mod(x, mc.CHUNK_SIZE);
             var my = mod(y, mc.CHUNK_SIZE);
@@ -424,7 +444,16 @@
     }
     extend(mc.Chunk.prototype, {
         setBlock: function (x, y, z, id) {
-            this.data[z + x * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE] = id;
+            var index = x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE;
+            if (id === 0 && this.structure[index]) {
+                console.log('here');
+                var indices = this.structure[index].indices;
+                for (var i = 0; i < indices.length; i++) {
+                    this.attributes.index.array[indices[i]] = 0;
+                }
+                this.attributes.index.needsUpdate = true;
+            }
+            this.data[index] = id;
         },
         getBlock: function (x, y, z) {
             if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.CHUNK_SIZE || z < 0 || z >= mc.CHUNK_SIZE) {
@@ -451,10 +480,10 @@
         },
         setGeometryBuffer: function (res) {
             this.data = res.data;
-
+            this.structure = res.structure;
             var geometry = new THREE.BufferGeometry();
             geometry.dynamic = true;
-            geometry.attributes = res.attributes;
+            this.attributes = geometry.attributes = res.attributes;
             geometry.offsets = [{
                 start: 0,
                 count: geometry.attributes.index.array.length,

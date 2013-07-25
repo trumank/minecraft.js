@@ -11,9 +11,11 @@ var queue = [];
 function next() {
     if (queue.length > 0) {
         var chunk = queue.pop();
+        var built = build(chunk.data);
         postMessage({
             position: chunk.position,
-            attributes: build(chunk.data),
+            attributes: built.attributes,
+            structure: built.structure,
             data: chunk.data
         }, [chunk.data.buffer]);
         setTimeout(next, 0);
@@ -26,11 +28,14 @@ self.onmessage = function(e) {
 };
 
 function build(data) {
+    var structure = {};
     var r = 100;
-    var indecies = new DynamicArray(Int16Array, r * 3);
+    var indices = new DynamicArray(Int16Array, r * 3);
     var positions = new DynamicArray(Float32Array, r * 3 * 3);
     var pi = 0;
     var uvs = new DynamicArray(Float32Array, r * 3 * 2);
+    var j = 0;
+    var struct;
     function vertex(x, y, z, uvx, uvy) {
         positions.push(x);
         positions.push(y);
@@ -46,12 +51,12 @@ function build(data) {
         return 1 - (Math.floor((index - index % textureWidth) / textureWidth) / textureHeight - incY[vertex] + 1 / textureHeight);
     }
     function quad(a, b, c, d) {
-        indecies.push(a);
-        indecies.push(b);
-        indecies.push(c);
-        indecies.push(a);
-        indecies.push(c);
-        indecies.push(d);
+        struct.indices.push(indices.push(a));
+        struct.indices.push(indices.push(b));
+        struct.indices.push(indices.push(c));
+        struct.indices.push(indices.push(a));
+        struct.indices.push(indices.push(c));
+        struct.indices.push(indices.push(d));
     }
     function getBlock(x, y, z) {
         if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
@@ -69,11 +74,14 @@ function build(data) {
         return false;
     }
     var id, faces, i;
-    for (var x = 0; x < chunkSize; x++) {
-        for (var y = 0; y < chunkSize; y++) {
-            for (var z = 0; z < chunkSize; z++) {
-                id = getBlock(x, y, z);
+    for (var y = 0; y < chunkSize; y++) {
+        for (var z = 0; z < chunkSize; z++) {
+            for (var x = 0; x < chunkSize; x++) {
+                id = data[j];
                 if (self.blocks[id]) {
+                    struct = {
+                        indices: []
+                    };
                     faces = self.blocks[id].faces;
                     if (!isBlockSolid(x + 1, y, z)) {
                         i = faces[0];
@@ -117,28 +125,35 @@ function build(data) {
                             vertex(x + 1, y + 1, z, uvx(i, 2), uvy(i, 2)),
                             vertex(x + 1, y, z, uvx(i, 3), uvy(i, 3)));
                     }
+                    if (struct.indices.length) {
+                        structure[j] = struct;
+                    }
                 }
+                ++j;
             }
         }
     }
-    indecies = indecies.concat();
+    indices = indices.concat();
     positions = positions.concat();
     uvs = uvs.concat();
     return {
-        index: {
-            itemSize: 1,
-            array: indecies,
-            numItems: indecies.length
-        },
-        position: {
-            itemSize: 3,
-            array: positions,
-            numItems: positions.length
-        },
-        uv: {
-            itemSize: 2,
-            array: uvs,
-            numItems: uvs.length
+        structure: structure,
+        attributes: {
+            index: {
+                itemSize: 1,
+                array: indices,
+                numItems: indices.length
+            },
+            position: {
+                itemSize: 3,
+                array: positions,
+                numItems: positions.length
+            },
+            uv: {
+                itemSize: 2,
+                array: uvs,
+                numItems: uvs.length
+            }
         }
     };
 }

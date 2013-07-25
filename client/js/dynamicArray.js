@@ -13,8 +13,8 @@ DynamicArray.prototype.push = function(item) {
         this.currentIndex = 0;
         this.chunks.push(this.currentChunk);
     }
-    this.totalSize++;
     this.currentChunk[this.currentIndex++] = item;
+    return this.totalSize++;
 };
 
 DynamicArray.prototype.concat = function() {
