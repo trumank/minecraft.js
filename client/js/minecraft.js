@@ -60,15 +60,12 @@
 
         var light = new THREE.PointLight(0x4c3d26, 6, 8);
         this.scene.add(light);
-        /*var l1 = new THREE.Mesh(new THREE.SphereGeometry( 0.125, 16, 8 ), new THREE.MeshBasicMaterial({ color: 0xff0040 }));
-        l1.position = light.position;
-        this.scene.add(l1);*/
 
         this.world = new mc.World(this, region);
         this.player = new mc.Player(this.world, 'Player', new THREE.PerspectiveCamera(120, width / height, 0.001, 20000));
 
-        this.player.camera.position.set(318, 89, 143);
-        light.position = this.player.object.position;
+        this.player.position.set(318, 89, 143);
+        light.position = this.player.position;
 
         container.appendChild(this.renderer.domElement);
         this.stats = new Stats();
@@ -98,17 +95,11 @@
     mc.Player = function (world, name, camera) {
         this.world = world;
         this.name = name;
-        if (camera) {
-            this.camera = camera;
-        }
+        this.camera = camera;
         this.velocity = new THREE.Vector3(0, 0, 0);
-        this.object = camera;
-        this.target = new THREE.Vector3(0, 0, 0);
-        this.lon = 0;
-        this.lat = 0;
-        this.phi = 0;
-        this.theta = 0;
+        this.position = camera.position;
         this.speed = 0.1;
+        this.lat = this.lon = 0;
 
         this.world.mc.element.addEventListener('keypress', function (e) {
             switch (String.fromCharCode(e.keyCode)) {
@@ -124,18 +115,12 @@
 
             this.lon += this.world.mc.mouseMovement.x * lookSpeed;
             this.lat -= this.world.mc.mouseMovement.y * lookSpeed;
-
             this.lat = THREE.Math.clamp(this.lat, -89.9, 89.9);
-            this.phi = (90 - this.lat) * Math.PI / 180;
-            this.theta = this.lon * Math.PI / 180;
 
-            var targetPosition = this.target,
-                position = this.object.position;
+            var phi = (90 - this.lat) * Math.PI / 180;
+            var theta = this.lon * Math.PI / 180;
 
-            targetPosition.x = position.x + 100 * Math.sin(this.phi) * Math.cos(this.theta);
-            targetPosition.y = position.y + 100 * Math.cos(this.phi);
-            targetPosition.z = position.z + 100 * Math.sin(this.phi) * Math.sin(this.theta);
-            this.object.lookAt(targetPosition);
+            this.camera.lookAt(this.position.clone().add(new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta))));
 
             if (this.flying) {
                 this.velocity.set(0, 0, 0);
@@ -155,8 +140,8 @@
             }
 
             var horizontal = new THREE.Vector3();
-            var c = Math.cos(this.theta);
-            var s = Math.sin(this.theta);
+            var c = Math.cos(theta);
+            var s = Math.sin(theta);
             if (this.world.mc.keysDown[65]) { // left
                 horizontal.x += s;
                 horizontal.z -= c;
@@ -175,17 +160,16 @@
             }
             this.velocity.add(horizontal.normalize().multiplyScalar(this.speed));
 
-            this.object.position.add(this.velocity);
+            this.position.add(this.velocity);
 
             if (!this.flying) {
                 this.correctCollision();
             }
 
             var chunks = this.world.chunks;
-            var cx = this.object.position.x >> 4;
-            var cy = this.object.position.y >> 4;
-            var cz = this.object.position.z >> 4;
-            var chunk;
+            var cx = this.position.x >> 4;
+            var cy = this.position.y >> 4;
+            var cz = this.position.z >> 4;
 
             var self = this;
             Object.keys(chunks).forEach(function (c) {
@@ -274,7 +258,7 @@
                     break;
                 } else {
                     var axis = axes[min.axis];
-                    this.object.position[axis[0]] = min.pos;
+                    this.position[axis[0]] = min.pos;
                     this.velocity[axis[0]] = 0;
                     axes.splice(min.axis, 1);
                     min.axis = -1;
@@ -282,7 +266,7 @@
             }
         },
         getBoundingBox: function () {
-            var p = this.object.position;
+            var p = this.position;
             return new THREE.Box3(new THREE.Vector3(p.x - 0.2, p.y - 1.5, p.z - 0.2), new THREE.Vector3(p.x + 0.2, p.y + 0.3, p.z + 0.2));
         }
     });
