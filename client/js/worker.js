@@ -11,13 +11,14 @@ var queue = [];
 function next() {
     if (queue.length > 0) {
         var chunk = queue.pop();
-        var built = build(chunk.data);
+        var built = build(chunk.blocks, chunk.metadata);
         postMessage({
             position: chunk.position,
             attributes: built.attributes,
             structure: built.structure,
-            data: chunk.data
-        }, [chunk.data.buffer]);
+            blocks: chunk.blocks,
+            metadata: chunk.metadata
+        }, [chunk.blocks.buffer, chunk.metadata.buffer]);
         setTimeout(next, 0);
     }
 }
@@ -27,7 +28,7 @@ self.onmessage = function(e) {
     next();
 };
 
-function build(data) {
+function build(blocks, metadata) {
     var structure = {};
     var r = 100;
     var indices = new DynamicArray(Int16Array, r * 3);
@@ -63,7 +64,17 @@ function build(data) {
             if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
                 return -1;
             }
-            return data[x + z * chunkSize + y * chunkSize * chunkSize];
+            return blocks[x + z * chunkSize + y * chunkSize * chunkSize];
+        },
+        getMetadata: function(x, y, z) {
+            if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
+                return -1;
+            }
+            var b = blocks[(x + z * chunkSize + y * chunkSize * chunkSize) >> 1];
+            if (x % 2) {
+                return b >> 4;
+            }
+            return b & 0xf;
         },
         isBlockSolid: function(x, y, z) {
             var id = f.getBlock(x, y, z);
@@ -75,19 +86,23 @@ function build(data) {
             return false;
         }
     };
-    var block;
+    var block, meta, k = 0;
     for (var y = 0; y < chunkSize; y++) {
         for (var z = 0; z < chunkSize; z++) {
             for (var x = 0; x < chunkSize; x++) {
-                block = self.blocks[data[j]];
+                block = self.blocks[blocks[j]];
                 if (block) {
                     struct = {
                         indices: []
                     };
-                    block.model(block, x, y, z, f)
+                    meta = (x % 2 ? metadata[k] >> 4 : metadata[k]) & 0xf;
+                    block.model(block, meta, x, y, z, f);
                     if (struct.indices.length) {
                         structure[j] = struct;
                     }
+                }
+                if (x % 2) {
+                    ++k;
                 }
                 ++j;
             }

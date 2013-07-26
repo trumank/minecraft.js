@@ -1,6 +1,6 @@
 (function (obj) {
     obj.models = {
-        cube: function (block, x, y, z, f) {
+        cube: function (block, metdata, x, y, z, f) {
             var faces = block.faces;
             var i;
             if (!f.isBlockSolid(x + 1, y, z)) {
@@ -46,7 +46,12 @@
                     f.vertex(x + 1, y, z, f.uvx(i, 3), f.uvy(i, 3)));
             }
         },
-        sprite: function (block, x, y, z, f) {
+        typed: function (block, metadata, x, y, z, f) {
+            obj.models.cube({
+                faces: block.faces[metadata & 3]
+            }, metadata, x, y, z, f);
+        },
+        sprite: function (block, metadata, x, y, z, f) {
             var i = block.faces;
             var d = Math.sqrt(1/8);
             var mx = x + 0.5;
@@ -67,6 +72,45 @@
                 f.vertex(mx - d, y + 1, mz + d, f.uvx(i, 2), f.uvy(i, 2)),
                 f.vertex(mx + d, y + 1, mz - d, f.uvx(i, 1), f.uvy(i, 1)),
                 f.vertex(mx + d, y, mz - d, f.uvx(i, 0), f.uvy(i, 0)));
+        },
+        liquid: function (block, metadata, x, y, z, f) {
+            var i = block.faces;
+            if (!f.isBlockSolid(x + 1, y, z) && f.getBlock(x + 1, y, z) !== block.id) {
+                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x - 1, y, z) && f.getBlock(x - 1, y, z) !== block.id) {
+                f.quad(f.vertex(x, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y + 1, z) && f.getBlock(x, y + 1, z) !== block.id) {
+                f.quad(f.vertex(x, y + 1, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y + 1, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y - 1, z) && f.getBlock(x, y - 1, z) !== block.id) {
+                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y, z + 1) && f.getBlock(x, y, z + 1) !== block.id) {
+                f.quad(f.vertex(x + 1, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y, z - 1) && f.getBlock(x, y, z - 1) !== block.id) {
+                f.quad(f.vertex(x, y, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
         }
     };
     obj.blocks = {
@@ -102,22 +146,26 @@
         8: {
             name: 'water',
             faces: 223,
-            //solid: false
+            solid: false,
+            model: obj.models.liquid
         },
         9: {
             name: 'water',
             faces: 223,
-            //solid: false
+            solid: false,
+            model: obj.models.liquid
         },
         10: {
             name: 'lava',
             faces: 255,
-            //solid: false
+            solid: false,
+            model: obj.models.liquid
         },
         11: {
             name: 'lava',
             faces: 255,
-            //solid: false
+            solid: false,
+            model: obj.models.liquid
         },
         12: {
             name: 'sand',
@@ -145,7 +193,8 @@
         },
         18: {
             name: 'leaves',
-            faces: 53
+            faces: [53, 133, 53, 197],
+            model: obj.models.typed
         },
         19: {
             name: 'sponge',
@@ -197,7 +246,7 @@
         // ...
         35: {
             name: 'wool',
-            faces: 64
+            faces: [64, 210, 194, 178, 162, 146, 130, 114, 225, 209, 193, 177, 161, 145, 129, 113]
         },
         // ...
         37: {
@@ -236,12 +285,23 @@
 
     Object.keys(obj.blocks).forEach(function (key) {
         var block = obj.blocks[key];
+        block.id = Number(key);
         block.solid = block.solid === false ? false : true;
-        var f = block.faces;
+        var f;
         if (!block.model) {
             block.model = obj.models.cube;
+        }
+        if (block.model === obj.models.cube) {
+            f = block.faces;
             if (typeof f === 'number') {
                 block.faces = [f, f, f, f, f, f];
+            }
+        } else if (block.model === obj.models.typed) {
+            for (var i = 0; i < block.faces.length; i++) {
+                f = block.faces[i];
+                if (typeof f === 'number') {
+                    block.faces[i] = [f, f, f, f, f, f];
+                }
             }
         }
     });

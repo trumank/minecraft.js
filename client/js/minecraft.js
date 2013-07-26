@@ -390,9 +390,10 @@
         },
         buildGeometryBuffer: function (chunk) {
             this.worker.postMessage([{
-                data: chunk.data,
+                blocks: chunk.blocks,
+                metadata: chunk.metadata,
                 position: {x: chunk.x, y: chunk.y, z: chunk.z}
-            }], [chunk.data.buffer]);
+            }], [chunk.blocks.buffer, chunk.metadata.buffer]);
         }
     });
     
@@ -410,8 +411,11 @@
             }
             this.stream.index = 4 * (x + z * 32);
             var offset = this.stream.uint24();
-            if (!offset || x < 0 || y < 0 || x >= 32 || y >= 32) {
-                return new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE);
+            if (!offset || x < 0 || y < 0 || z < 0 || x >= 32 || y >= 32 || z >= 32) {
+                return {
+                    blocks: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE),
+                    metadata: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2)
+                };
             }
             this.stream.index = offset * 0x1000;
             var size = this.stream.uint32();
@@ -419,9 +423,15 @@
             var level = mc.nbt.read(new Zlib.Inflate(new Uint8Array(this.stream.arrayBuffer(size))).decompress()).Level;
             var sections = level.Sections;
             for (var i = 0; i < sections.length; ++i) {
-                this.chunks[x + '_' + sections[i].Y + '_' + z] = sections[i].Blocks;
+                this.chunks[x + '_' + sections[i].Y + '_' + z] = {
+                    blocks: sections[i].Blocks,
+                    metadata: sections[i].Data
+                };
             }
-            return this.chunks[x + '_' + y + '_' + z] || (this.chunks[x + '_' + y + '_' + z] = new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE));
+            return this.chunks[x + '_' + y + '_' + z] || (this.chunks[x + '_' + y + '_' + z] = {
+                blocks: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE),
+                metadata: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2)
+            });
         }
     }),
 
@@ -430,27 +440,27 @@
         this.x = x;
         this.y = y;
         this.z = z;
-        this.data = data;
+        this.blocks = data.blocks;
+        this.metadata = data.metadata;
         this.dirty = true;
     }
     extend(mc.Chunk.prototype, {
         setBlock: function (x, y, z, id) {
             var index = x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE;
             if (id === 0 && this.structure[index]) {
-                console.log('here');
                 var indices = this.structure[index].indices;
                 for (var i = 0; i < indices.length; i++) {
                     this.attributes.index.array[indices[i]] = 0;
                 }
                 this.attributes.index.needsUpdate = true;
             }
-            this.data[index] = id;
+            this.blocks[index] = id;
         },
         getBlock: function (x, y, z) {
             if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.CHUNK_SIZE || z < 0 || z >= mc.CHUNK_SIZE) {
                 return -1;
             }
-            return this.data[x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE];
+            return this.blocks[x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE];
         },
         
         isBlockSolid: function (x, y, z) {
@@ -464,13 +474,14 @@
         },
 
         buildMesh: function () {
-            if (!this.data.buffer) {
+            if (!this.blocks.buffer) {
                 return;
             }
             this.world.buildGeometryBuffer(this);
         },
         setGeometryBuffer: function (res) {
-            this.data = res.data;
+            this.blocks = res.blocks;
+            this.metadata = res.metadata;
             this.structure = res.structure;
             var geometry = new THREE.BufferGeometry();
             geometry.dynamic = true;
