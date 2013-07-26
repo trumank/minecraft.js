@@ -453,8 +453,8 @@
         
         isBlockSolid: function (x, y, z) {
             var id = this.getBlock(x, y, z);
-            if (mc.models.blocks[id]) {
-                return mc.models.blocks[id].solid;
+            if (mc.blocks[id]) {
+                return mc.blocks[id].solid;
             } else if (id === -1) {
                 return true;
             }

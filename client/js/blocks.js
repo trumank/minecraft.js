@@ -1,4 +1,74 @@
 (function (obj) {
+    obj.models = {
+        cube: function (block, x, y, z, f) {
+            var faces = block.faces;
+            var i;
+            if (!f.isBlockSolid(x + 1, y, z)) {
+                i = faces[0];
+                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x - 1, y, z)) {
+                i = faces[1];
+                f.quad(f.vertex(x, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y + 1, z)) {
+                i = faces[2];
+                f.quad(f.vertex(x, y + 1, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y + 1, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y - 1, z)) {
+                i = faces[3];
+                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y, z + 1)) {
+                i = faces[4];
+                f.quad(f.vertex(x + 1, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+            if (!f.isBlockSolid(x, y, z - 1)) {
+                i = faces[5];
+                f.quad(f.vertex(x, y, z, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+            }
+        },
+        sprite: function (block, x, y, z, f) {
+            var i = block.faces;
+            var d = Math.sqrt(1/8);
+            var mx = x + 0.5;
+            var mz = z + 0.5;
+            f.quad(f.vertex(mx + d, y, mz + d, f.uvx(i, 0), f.uvy(i, 0)),
+                f.vertex(mx + d, y + 1, mz + d, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx - d, y + 1, mz - d, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx - d, y, mz - d, f.uvx(i, 3), f.uvy(i, 3)));
+            f.quad(f.vertex(mx - d, y, mz - d, f.uvx(i, 3), f.uvy(i, 3)),
+                f.vertex(mx - d, y + 1, mz - d, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx + d, y + 1, mz + d, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx + d, y, mz + d, f.uvx(i, 0), f.uvy(i, 0)));
+            f.quad(f.vertex(mx + d, y, mz - d, f.uvx(i, 0), f.uvy(i, 0)),
+                f.vertex(mx + d, y + 1, mz - d, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx - d, y + 1, mz + d, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx - d, y, mz + d, f.uvx(i, 3), f.uvy(i, 3)));
+            f.quad(f.vertex(mx - d, y, mz + d, f.uvx(i, 3), f.uvy(i, 3)),
+                f.vertex(mx - d, y + 1, mz + d, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx + d, y + 1, mz - d, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx + d, y, mz - d, f.uvx(i, 0), f.uvy(i, 0)));
+        }
+    };
     obj.blocks = {
         1: {
             name: 'stone',
@@ -81,16 +151,66 @@
             name: 'sponge',
             faces: 48
         },
+        20: {
+            name: 'glass',
+            faces: 49
+        },
+        21: {
+            name: 'lapis ore',
+            faces: 160
+        },
+        22: {
+            name: 'lapis block',
+            faces: 144
+        },
+        23: {
+            name: 'dispenser',
+            faces: 46
+        },
+        24: {
+            name: 'sand stone',
+            faces: [192, 192, 176, 208, 192, 192]
+        },
+        25: {
+            name: 'note block',
+            faces: [74, 74, 75, 74, 74, 74]
+        },
+        // ...
+        30: {
+            name: 'web',
+            faces: 11,
+            solid: false,
+            model: obj.models.sprite
+        },
+        31: {
+            name: 'tall grass',
+            faces: 39,
+            solid: false,
+            model: obj.models.sprite
+        },
+        32: {
+            name: 'dead bush',
+            faces: 55,
+            solid: false,
+            model: obj.models.sprite
+        },
+        // ...
+        35: {
+            name: 'wool',
+            faces: 64
+        },
         // ...
         37: {
             name: 'dandelion',
             faces: 13,
-            solid: false
+            solid: false,
+            model: obj.models.sprite
         },
         38: {
             name: 'rose',
             faces: 12,
-            solid: false
+            solid: false,
+            model: obj.models.sprite
         },
         // ...
         50: {
@@ -118,8 +238,11 @@
         var block = obj.blocks[key];
         block.solid = block.solid === false ? false : true;
         var f = block.faces;
-        if (typeof f === 'number') {
-            block.faces = [f, f, f, f, f, f];
+        if (!block.model) {
+            block.model = obj.models.cube;
+            if (typeof f === 'number') {
+                block.faces = [f, f, f, f, f, f];
+            }
         }
     });
-}) (self.mc ? mc.models : self);
+}) (self.mc ? mc : self);
