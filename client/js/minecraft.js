@@ -404,7 +404,9 @@
     extend(mc.AnvilChunkLoader.prototype, {
         load: function (x, y, z) {
             if (this.chunks[x + '_' + y + '_' + z]) {
-                return this.chunks[x + '_' + y + '_' + z];
+                var chunk = this.chunks[x + '_' + y + '_' + z];
+                delete this.chunks[x + '_' + y + '_' + z];
+                return chunk;
             }
             this.stream.index = 4 * (x + z * 32);
             var offset = this.stream.uint24();
