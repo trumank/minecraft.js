@@ -473,8 +473,6 @@
                 count: geometry.attributes.index.array.length,
                 index: 0
             }];
-            geometry.computeBoundingBox();
-            geometry.computeBoundingSphere();
             geometry.computeVertexNormals();
             var mesh = new THREE.Mesh(geometry, mc.materials.terrain);
 
