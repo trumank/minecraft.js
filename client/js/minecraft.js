@@ -121,6 +121,11 @@
             var theta = this.lon * Math.PI / 180;
 
             this.camera.lookAt(this.position.clone().add(new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta))));
+            var oldFov = this.camera.fov;
+            this.camera.fov = this.world.mc.keysDown[17] ? 30 : 120; // zoom
+            if (oldFov !== this.camera.fov) {
+                this.camera.updateProjectionMatrix();
+            }
 
             if (this.flying) {
                 this.velocity.set(0, 0, 0);
