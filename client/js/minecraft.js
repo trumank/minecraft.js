@@ -82,14 +82,14 @@
             var render;
             render = (function () {
                 webkitRequestAnimationFrame(render);
-                this.player.step();
-                this.step();
+                this.player.tick();
+                this.tick();
                 this.renderer.render(this.scene, this.player.camera);
                 this.stats.update();
             }).bind(this);
             render();
         },
-        step: function () {
+        tick: function () {
             this.mouseMovement.x = 0;
             this.mouseMovement.y = 0;
         }
@@ -119,7 +119,7 @@
         }.bind(this));
     };
     extend(mc.Player.prototype, {
-        step: function () {
+        tick: function () {
             var lookSpeed = 0.5;
 
             this.lon += this.world.mc.mouseMovement.x * lookSpeed;
