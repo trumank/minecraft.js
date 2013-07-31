@@ -15,7 +15,6 @@ function next() {
         postMessage({
             position: chunk.position,
             attributes: built.attributes,
-            structure: built.structure,
             blocks: chunk.blocks,
             metadata: chunk.metadata
         }, [chunk.blocks.buffer, chunk.metadata.buffer]);
@@ -29,14 +28,12 @@ self.onmessage = function(e) {
 };
 
 function build(blocks, metadata) {
-    var structure = {};
     var r = 100;
     var indices = new DynamicArray(Int16Array, r * 3);
     var positions = new DynamicArray(Float32Array, r * 3 * 3);
     var pi = 0;
     var uvs = new DynamicArray(Float32Array, r * 3 * 2);
     var j = 0;
-    var struct;
     var f = {
         uvx: function(index, vertex) {
             return index % textureWidth / textureWidth - incX[vertex] + 1 / textureWidth;
@@ -53,12 +50,12 @@ function build(blocks, metadata) {
             return pi++;
         },
         quad: function(a, b, c, d) {
-            struct.indices.push(indices.push(a));
-            struct.indices.push(indices.push(b));
-            struct.indices.push(indices.push(c));
-            struct.indices.push(indices.push(a));
-            struct.indices.push(indices.push(c));
-            struct.indices.push(indices.push(d));
+            indices.push(a);
+            indices.push(b);
+            indices.push(c);
+            indices.push(a);
+            indices.push(c);
+            indices.push(d);
         },
         getBlock: function(x, y, z) {
             if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
@@ -97,9 +94,6 @@ function build(blocks, metadata) {
                     };
                     meta = (x % 2 ? metadata[k] >> 4 : metadata[k]) & 0xf;
                     block.model(block, meta, x, y, z, f);
-                    if (struct.indices.length) {
-                        structure[j] = struct;
-                    }
                 }
                 if (x % 2) {
                     ++k;
@@ -112,7 +106,6 @@ function build(blocks, metadata) {
     positions = positions.concat();
     uvs = uvs.concat();
     return {
-        structure: structure,
         attributes: {
             index: {
                 itemSize: 1,

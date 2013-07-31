@@ -89,6 +89,7 @@
         tick: function () {
             this.mouseMovement.x = 0;
             this.mouseMovement.y = 0;
+            this.world.tick();
         }
     });
 
@@ -291,6 +292,7 @@
         this.mc = inst;
         this.chunks = {};
         this.chunkLoader = new mc.AnvilChunkLoader(data);
+        this.queuedChunks = [];
         this.worker = new Worker('js/worker.js');
         var self = this;
         this.worker.onmessage = function (e) {
@@ -303,23 +305,12 @@
     };
     mc.CHUNK_SIZE = 16;
     extend(mc.World.prototype, {
+        tick: function () {
+            this.buildQueuedChunks();
+        },
         loadChunk: function (x, y, z) {
             var chunk = new mc.Chunk(this, x, y, z, this.chunkLoader.load(x, y, z));
             this.setChunk(x, y, z, chunk);
-
-            var c;
-            c = this.getChunk(x + 1, y, z);
-            if (c) c.dirty = true;
-            c = this.getChunk(x - 1, y, z);
-            if (c) c.dirty = true;
-            c = this.getChunk(x, y + 1, z);
-            if (c) c.dirty = true;
-            c = this.getChunk(x, y - 1, z);
-            if (c) c.dirty = true;
-            c = this.getChunk(x, y, z + 1);
-            if (c) c.dirty = true;
-            c = this.getChunk(x, y, z - 1);
-            if (c) c.dirty = true;
         },
         unloadChunk: function (x, y, z) {
             var mesh = this.getChunk(x, y, z).mesh;
@@ -330,6 +321,17 @@
         },
         chunkKey: function (x, y, z) {
             return x + '_' + y + '_' + z;
+        },
+        queueChunk: function (chunk) {
+            this.queuedChunks.push(chunk);
+        },
+        buildQueuedChunks: function () {
+            for (var i = 0; i < this.queuedChunks.length; i++) {
+                var chunk = this.queuedChunks[i];
+                this.buildGeometryBuffer(chunk);
+                chunk.queued = false;
+            }
+            this.queuedChunks = [];
         },
         rebuildDirty: function () {
             var chunks = this.chunks;
@@ -393,7 +395,7 @@
                 blocks: chunk.blocks,
                 metadata: chunk.metadata,
                 position: {x: chunk.x, y: chunk.y, z: chunk.z}
-            }], [chunk.blocks.buffer, chunk.metadata.buffer]);
+            }], [chunk.transBlocks.buffer, chunk.transMetadata.buffer]);
         }
     });
     
@@ -442,19 +444,17 @@
         this.z = z;
         this.blocks = data.blocks;
         this.metadata = data.metadata;
-        this.dirty = true;
+        this.transBlocks = new Uint8Array(data.blocks.length);
+        this.transBlocks.set(this.blocks);
+        this.transMetadata = new Uint8Array(data.metadata.length);
+        this.transMetadata.set(this.metadata);
+        this.buildMesh();
     }
     extend(mc.Chunk.prototype, {
         setBlock: function (x, y, z, id) {
             var index = x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE;
-            if (id === 0 && this.structure[index]) {
-                var indices = this.structure[index].indices;
-                for (var i = 0; i < indices.length; i++) {
-                    this.attributes.index.array[indices[i]] = 0;
-                }
-                this.attributes.index.needsUpdate = true;
-            }
-            this.blocks[index] = id;
+            this.blocks[index] = this.transBlocks[index] = id;
+            this.buildMesh();
         },
         getBlock: function (x, y, z) {
             if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.CHUNK_SIZE || z < 0 || z >= mc.CHUNK_SIZE) {
@@ -474,15 +474,15 @@
         },
 
         buildMesh: function () {
-            if (!this.blocks.buffer) {
+            if (this.queued) {
                 return;
             }
-            this.world.buildGeometryBuffer(this);
+            this.queued = true;
+            this.world.queueChunk(this);
         },
         setGeometryBuffer: function (res) {
-            this.blocks = res.blocks;
-            this.metadata = res.metadata;
-            this.structure = res.structure;
+            this.transBlocks = res.blocks;
+            this.transMetadata = res.metadata;
             var geometry = new THREE.BufferGeometry();
             geometry.dynamic = true;
             this.attributes = geometry.attributes = res.attributes;
