@@ -299,7 +299,12 @@
             var pos = e.data.position;
             var chunk = self.getChunk(pos.x, pos.y, pos.z);
             if (chunk) {
-                chunk.setGeometryBuffer(e.data);
+                if (e.data.attributes) {
+                    chunk.setGeometryBuffer(e.data);
+                } else {
+                    chunk.transBlocks = e.data.blocks;
+                    chunk.transMetadata = e.data.metadata;
+                }
             }
         };
     };
@@ -326,11 +331,34 @@
             this.queuedChunks.push(chunk);
         },
         buildQueuedChunks: function () {
+            if (this.queuedChunks.length === 0) {
+                return;
+            }
+            var chunks = [],
+                buffers = [];
             for (var i = 0; i < this.queuedChunks.length; i++) {
                 var chunk = this.queuedChunks[i];
-                this.buildGeometryBuffer(chunk);
-                chunk.queued = false;
+                chunks.push({
+                    blocks: chunk.blocks,
+                    metadata: chunk.metadata,
+                    position: {x: chunk.x, y: chunk.y, z: chunk.z},
+                    build: true
+                });
+                var s = this.getSurroundingChunks(chunk.x, chunk.y, chunk.z);
+                for (var j = 0; j < s.length; j++) {
+                    var chunk = s[j];
+                    if (!chunk.queued) {
+                        chunks.push({
+                            blocks: chunk.blocks,
+                            metadata: chunk.metadata,
+                            position: {x: chunk.x, y: chunk.y, z: chunk.z},
+                            build: false
+                        });
+                    }
+                }
+                buffers.push(chunk.transBlocks.buffer, chunk.transMetadata.buffer);
             }
+            this.worker.postMessage(chunks, buffers);
             this.queuedChunks = [];
         },
         rebuildDirty: function () {
@@ -350,17 +378,25 @@
             return this.chunks[this.chunkKey(x, y, z)] = chunk;
         },
         getChunkContainingBlock: function (x, y, z) {
-            var mx = mod(x, mc.CHUNK_SIZE);
-            var my = mod(y, mc.CHUNK_SIZE);
-            var mz = mod(z, mc.CHUNK_SIZE);
-            return this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+            return this.getChunk(x >> 4, y >> 4, z >> 4);
+        },
+        getSurroundingChunks: function (x, y, z) {
+            var d = [{x:1,y:0,z:0},{x:-1,y:0,z:0},{x:0,y:1,z:0},{x:0,y:-1,z:0},{x:0,y:0,z:1},{x:0,y:0,z:-1}];
+            var chunks = [];
+            for (var i = 0; i < d.length; i++) {
+                var c = this.getChunk(x + d[i].x, y + d[i].y, z + d[i].z);
+                if (c) {
+                    chunks.push(c);
+                }
+            }
+            return chunks;
         },
 
         setBlock: function (x, y, z, id) {
             var mx = mod(x, mc.CHUNK_SIZE);
             var my = mod(y, mc.CHUNK_SIZE);
             var mz = mod(z, mc.CHUNK_SIZE);
-            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+            var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
             if (chunk) {
                 chunk.setBlock(mx, my, mz, id);
             }
@@ -369,14 +405,14 @@
             var mx = mod(x, mc.CHUNK_SIZE);
             var my = mod(y, mc.CHUNK_SIZE);
             var mz = mod(z, mc.CHUNK_SIZE);
-            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+            var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
             return chunk ? chunk.getBlock(mx, my, mz) : 0;
         },
         isBlockSolid: function (x, y, z) {
             var mx = mod(x, mc.CHUNK_SIZE);
             var my = mod(y, mc.CHUNK_SIZE);
             var mz = mod(z, mc.CHUNK_SIZE);
-            var chunk = this.getChunk((x - mx) / mc.CHUNK_SIZE, (y - my) / mc.CHUNK_SIZE, (z - mz) / mc.CHUNK_SIZE);
+            var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
             return chunk ? chunk.isBlockSolid(mx, my, mz) : 0;
         },
 
@@ -389,13 +425,6 @@
             chunk.mesh.position.y = chunk.y * mc.CHUNK_SIZE;
             chunk.mesh.position.z = chunk.z * mc.CHUNK_SIZE;
             this.mc.scene.add(chunk.mesh);
-        },
-        buildGeometryBuffer: function (chunk) {
-            this.worker.postMessage([{
-                blocks: chunk.blocks,
-                metadata: chunk.metadata,
-                position: {x: chunk.x, y: chunk.y, z: chunk.z}
-            }], [chunk.transBlocks.buffer, chunk.transMetadata.buffer]);
         }
     });
     
@@ -453,7 +482,15 @@
     extend(mc.Chunk.prototype, {
         setBlock: function (x, y, z, id) {
             var index = x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE;
-            this.blocks[index] = this.transBlocks[index] = id;
+            this.blocks[index] = id;
+            if (this.isBuilding()) {
+                if (!this.diff) {
+                    this.diff = Object.create(null);
+                }
+                this.diff[index] = id;
+            } else {
+                this.transBlocks[index] = id;
+            }
             this.buildMesh();
         },
         getBlock: function (x, y, z) {
@@ -474,11 +511,14 @@
         },
 
         buildMesh: function () {
-            if (this.queued) {
+            if (!this.transBlocks.buffer) {
                 return;
             }
             this.queued = true;
             this.world.queueChunk(this);
+        },
+        isBuilding: function () {
+            return !this.transBlocks.buffer;
         },
         setGeometryBuffer: function (res) {
             this.transBlocks = res.blocks;
@@ -498,6 +538,13 @@
             this.dirty = false;
             this.mesh = mesh;
             this.world.updateGeometry(this);
+            this.queued = false;
+            if (this.diff) {
+                for (var i in this.diff) {
+                    this.transBlocks[i] = this.diff[i];
+                }
+                this.buildMesh();
+            }
         }
     });
     
