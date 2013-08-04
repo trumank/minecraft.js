@@ -79,10 +79,11 @@
             var render;
             render = (function () {
                 webkitRequestAnimationFrame(render);
+                this.stats.begin();
                 this.player.tick();
                 this.tick();
                 this.renderer.render(this.scene, this.player.camera);
-                this.stats.update();
+                this.stats.end();
             }).bind(this);
             render();
         },
