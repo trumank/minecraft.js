@@ -261,16 +261,86 @@
             solid: false,
             model: obj.models.sprite
         },
+        39: {
+            name: 'brown mushroom',
+            faces: 29,
+            solid: false,
+            model: obj.models.sprite
+        },
+        40: {
+            name: 'red mushroom',
+            faces: 28,
+            solid: false,
+            model: obj.models.sprite
+        },
+        41: {
+            name: 'gold block',
+            faces: 23
+        },
+        42: {
+            name: 'iron block',
+            faces: 22
+        },
         // ...
+        45: {
+            name: 'brick',
+            faces: 7
+        },
+        46: {
+            name: 'tnt',
+            faces: 8
+        },
+        47: {
+            name: 'book shelf',
+            faces: [35, 35, 4, 4, 35, 35]
+        },
+        48: {
+            name: 'mossy cobblestone',
+            faces: 36
+        },
+        49: {
+            name: 'obsidian',
+            faces: 37
+        },
         50: {
             name: 'torch',
             faces: 80,
             solid: false
         },
+        51: {
+            name: 'fire',
+            faces: 31,
+            solid: false
+        },
+        52: {
+            name: 'spawner',
+            faces: 65
+        },
         // ...
         56: {
             name: 'diamond ore',
             faces: 50
+        },
+        57: {
+            name: 'diamond block',
+            faces: 24
+        },
+        58: {
+            name: 'crafting table',
+            faces: [59, 59, 43, 4, 60, 60]
+        },
+        // ...
+        60: {
+            name: 'tilled dirt',
+            faces: [2, 2, 87, 2, 2, 2]
+        },
+        61: {
+            name: 'furnace',
+            faces: [44, 45, 62, 62, 45, 45]
+        },
+        62: {
+            name: 'furnace',
+            faces: [61, 45, 62, 62, 45, 45]
         },
         // ...
         73: {
