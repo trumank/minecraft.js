@@ -363,6 +363,11 @@
         74: {
             name: 'redstone ore',
             faces: 51
+        },
+        // ...
+        98: {
+            name: 'stone brick',
+            faces: 54
         }
     };
 
