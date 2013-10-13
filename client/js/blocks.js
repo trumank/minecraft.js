@@ -2,48 +2,54 @@
     obj.models = {
         cube: function (block, metdata, x, y, z, f) {
             var faces = block.faces;
-            var i;
+            var i, c;
             if (!f.isBlockSolid(x + 1, y, z)) {
                 i = faces[0];
-                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x + 1, y, z) / 12 + 0.2;
+                f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x - 1, y, z)) {
                 i = faces[1];
-                f.quad(f.vertex(x, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x - 1, y, z) / 12 + 0.2;
+                f.quad(f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y + 1, z)) {
                 i = faces[2];
-                f.quad(f.vertex(x, y + 1, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y + 1, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y + 1, z) / 12 + 0.2;
+                f.quad(f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y - 1, z)) {
                 i = faces[3];
-                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y - 1, z) / 12 + 0.2;
+                f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y, z + 1)) {
                 i = faces[4];
-                f.quad(f.vertex(x + 1, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y, z + 1) / 12 + 0.2;
+                f.quad(f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y, z - 1)) {
                 i = faces[5];
-                f.quad(f.vertex(x, y, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y, z - 1) / 12 + 0.2;
+                f.quad(f.vertex(x, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
         },
         typed: function (block, metadata, x, y, z, f) {
@@ -75,41 +81,48 @@
         },
         liquid: function (block, metadata, x, y, z, f) {
             var i = block.faces;
+            var i, c;
             if (!f.isBlockSolid(x + 1, y, z) && f.getBlock(x + 1, y, z) !== block.id) {
-                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x + 1, y, z) / 12 + 0.2;
+                f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x - 1, y, z) && f.getBlock(x - 1, y, z) !== block.id) {
-                f.quad(f.vertex(x, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x - 1, y, z) / 12 + 0.2;
+                f.quad(f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y + 1, z) && f.getBlock(x, y + 1, z) !== block.id) {
-                f.quad(f.vertex(x, y + 1, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y + 1, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y + 1, z) / 12 + 0.2;
+                f.quad(f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y - 1, z) && f.getBlock(x, y - 1, z) !== block.id) {
-                f.quad(f.vertex(x + 1, y, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y - 1, z) / 12 + 0.2;
+                f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y, z + 1) && f.getBlock(x, y, z + 1) !== block.id) {
-                f.quad(f.vertex(x + 1, y, z + 1, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y + 1, z + 1, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y + 1, z + 1, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z + 1, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y, z + 1) / 12 + 0.2;
+                f.quad(f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
             if (!f.isBlockSolid(x, y, z - 1) && f.getBlock(x, y, z - 1) !== block.id) {
-                f.quad(f.vertex(x, y, z, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y, z, f.uvx(i, 3), f.uvy(i, 3)));
+                c = f.getBlockLight(x, y, z - 1) / 12 + 0.2;
+                f.quad(f.vertex(x, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                    f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                    f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
         }
     };

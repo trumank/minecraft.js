@@ -1,6 +1,7 @@
 mc = {shaders: {}, models: {}};
 mc.shaders.terrain = new THREE.ShaderMaterial({
     attributes: {
+        color: {type: 'v3', value: null},
         uv: {type: 'v2', value: null}
     },
     uniforms: THREE.UniformsUtils.merge([
@@ -45,7 +46,7 @@ mc.shaders.terrain = new THREE.ShaderMaterial({
         '}'
     ].join('\n'),
     fragmentShader: [
-        'uniform vec3 color;',
+        //'uniform vec3 color;',
         'uniform float opacity;',
         'varying vec3 vLightFront;',
         '#ifdef DOUBLE_SIDED',
@@ -65,7 +66,7 @@ mc.shaders.terrain = new THREE.ShaderMaterial({
 
             THREE.ShaderChunk[ 'map_fragment' ],
 
-            'gl_FragColor = mix(gl_FragColor, vec4(color, 1.0), 0.5);',
+            //'gl_FragColor = mix(gl_FragColor, vec4(color, 1.0), 0.5);',
 
             THREE.ShaderChunk[ 'alphatest_fragment' ],
             THREE.ShaderChunk[ 'specularmap_fragment' ],
@@ -96,7 +97,14 @@ mc.shaders.terrain = new THREE.ShaderMaterial({
             THREE.ShaderChunk[ 'fog_fragment' ],
         '}'
     ].join('\n'),
-    lights: true,
-    fog: true,
-    map: true
+    //lights: true,
+    //fog: true,
+    map: true,
+    vertexColors: THREE.VertexColors
+});
+
+mc.shaders.terrain = new THREE.MeshLambertMaterial({
+    vertexColors: THREE.VertexColors,
+    gammaOutput: true,
+    shading: THREE.FlatShading
 });

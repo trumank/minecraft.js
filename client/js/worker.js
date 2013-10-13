@@ -34,8 +34,10 @@ function next() {
             postMessage({
                 position: chunk.position,
                 blocks: chunk.blocks,
-                metadata: chunk.metadata
-            }, [chunk.blocks.buffer, chunk.metadata.buffer]);
+                metadata: chunk.metadata,
+                blockLight: chunk.blockLight,
+                skyLight: chunk.skyLight
+            }, [chunk.blocks.buffer, chunk.metadata.buffer, chunk.blockLight.buffer, chunk.skyLight.buffer]);
             delete chunks[positionHashObj(chunk.position)];
         }
     }
@@ -57,10 +59,13 @@ function build(chunk) {
     var pos = chunk.position;
     var blocks = chunk.blocks;
     var metadata = chunk.metadata;
+    var blockLight = chunk.blockLight;
+    var skyLight = chunk.skyLight;
     var r = 100;
     var indices = new DynamicArray(Int16Array, r * 3);
     var positions = new DynamicArray(Float32Array, r * 3 * 3);
     var pi = 0;
+    var colors = new DynamicArray(Float32Array, r * 3 * 3);
     var uvs = new DynamicArray(Float32Array, r * 3 * 2);
     var j = 0;
     var f = {
@@ -70,10 +75,13 @@ function build(chunk) {
         uvy: function(index, vertex) {
             return 1 - (Math.floor((index - index % textureWidth) / textureWidth) / textureHeight - incY[vertex] + 1 / textureHeight);
         },
-        vertex: function(x, y, z, uvx, uvy) {
+        vertex: function(x, y, z, r, g, b, uvx, uvy) {
             positions.push(x);
             positions.push(y);
             positions.push(z);
+            colors.push(r, g, b);
+            colors.push(r, g, b);
+            colors.push(r, g, b);
             uvs.push(uvx);
             uvs.push(uvy);
             return pi++;
@@ -100,7 +108,7 @@ function build(chunk) {
             // special case for this chunk for optimization
             return blocks[x + z * chunkSize + y * chunkSize * chunkSize];
         },
-        getMetadata: function(x, y, z) {
+        getProp: function(x, y, z, prop) {
             var arr;
             if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
                 var cx = (x + chunkSize * pos.x) >> 4;
@@ -110,16 +118,22 @@ function build(chunk) {
                 if (!c) {
                     return -1;
                 }
-                arr = c.metadata;
+                arr = c[prop];
             } else {
                 // special case for this chunk for optimization
-                arr = chunk.metadata
+                arr = chunk[prop]
             }
-            var b = blocks[(mod(x, chunkSize) + mod(z, chunkSize) * chunkSize + mod(y, chunkSize) * chunkSize * chunkSize) >> 1];
-            if (x % 2) {
-                return b >> 4;
-            }
-            return b & 0xf;
+            var b = arr[(mod(x, chunkSize) + mod(z, chunkSize) * chunkSize + mod(y, chunkSize) * chunkSize * chunkSize) >> 1];
+            return (x % 2 ? b >> 4 : b) & 0xf;
+        },
+        getMetadata: function (x, y, z) {
+            return f.getProp(x, y, z, 'metadata');
+        },
+        getBlockLight: function (x, y, z) {
+            return f.getProp(x, y, z, 'blockLight');
+        },
+        getSkyLight: function (x, y, z) {
+            return f.getProp(x, y, z, 'skyLight');
         },
         isBlockSolid: function(x, y, z) {
             var id = f.getBlock(x, y, z);
@@ -146,6 +160,7 @@ function build(chunk) {
     }
     indices = indices.concat();
     positions = positions.concat();
+    colors = colors.concat();
     uvs = uvs.concat();
     chunk.built = true;
     return {
@@ -158,6 +173,11 @@ function build(chunk) {
             itemSize: 3,
             array: positions,
             numItems: positions.length
+        },
+        color: {
+            itemSize: 3,
+            array: colors,
+            numItems: colors.length
         },
         uv: {
             itemSize: 2,

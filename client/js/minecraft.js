@@ -12,11 +12,14 @@
     }
 
     mc.textures = {
-        terrain: THREE.ImageUtils.loadTexture('img/terrain.png')
+        terrain: THREE.ImageUtils.loadTexture('img/32x32 terrain.png')
     };
+    mc.textures.terrain.wrapS = THREE.RepeatWrapping;
+    mc.textures.terrain.wrapT = THREE.RepeatWrapping;
     mc.textures.terrain.magFilter = THREE.NearestFilter;
+    mc.textures.terrain.minFilter = THREE.NearestFilter;
     mc.shaders.terrain.map = mc.textures.terrain;
-    mc.shaders.terrain.uniforms.map.value = mc.textures.terrain;
+    //mc.shaders.terrain.uniforms.map.value = mc.textures.terrain;
     mc.materials = {
         terrain: mc.shaders.terrain
     };
@@ -24,7 +27,7 @@
     mc.Minecraft = function (container, width, height) {
         this.renderer = new THREE.WebGLRenderer();
         this.renderer.setSize(width, height);
-        this.renderer.setClearColor(0xbfd1e5);
+        this.renderer.setClearColor(0x101010); // sky: :0xbfd1e5
 
         this.element = this.renderer.domElement;
         this.element.setAttribute('tabindex', '0');
@@ -56,16 +59,16 @@
 
         this.scene = new THREE.Scene();
 
-        this.scene.add(new THREE.AmbientLight(0x666644));
+        this.scene.add(new THREE.AmbientLight(0xffd8aa));
 
-        var light = new THREE.PointLight(0x4c3d26, 6, 8);
-        this.scene.add(light);
+        //var light = new THREE.PointLight(0x4c3d26, 6, 8);
+        //this.scene.add(light);
 
         this.world = new mc.World(this, region);
         this.player = new mc.Player(this.world, 'Player', new THREE.PerspectiveCamera(120, width / height, 0.001, 20000));
 
         this.player.position.set(318, 89, 143);
-        light.position = this.player.position;
+        //light.position = this.player.position;
 
         container.appendChild(this.renderer.domElement);
         this.stats = new Stats();
@@ -305,6 +308,8 @@
                 } else {
                     chunk.transBlocks = e.data.blocks;
                     chunk.transMetadata = e.data.metadata;
+                    chunk.transBlockLight = e.data.blockLight;
+                    chunk.transSkyLight = e.data.skyLight;
                 }
             }
         };
@@ -337,30 +342,37 @@
             }
             var chunks = [],
                 buffers = [];
-            for (var i = 0; i < this.queuedChunks.length; i++) {
+            for (var i = this.queuedChunks.length - 1; i >= 0; i--) {
                 var chunk = this.queuedChunks[i];
+                if (chunk.isBuilding()) {
+                    continue;
+                }
                 chunks.push({
                     blocks: chunk.blocks,
                     metadata: chunk.metadata,
+                    blockLight: chunk.blockLight,
+                    skyLight: chunk.skyLight,
                     position: {x: chunk.x, y: chunk.y, z: chunk.z},
                     build: true
                 });
                 var s = this.getSurroundingChunks(chunk.x, chunk.y, chunk.z);
                 for (var j = 0; j < s.length; j++) {
-                    var chunk = s[j];
-                    if (!chunk.queued) {
+                    var c = s[j];
+                    if (!c.queued) {
                         chunks.push({
-                            blocks: chunk.blocks,
-                            metadata: chunk.metadata,
-                            position: {x: chunk.x, y: chunk.y, z: chunk.z},
+                            blocks: c.blocks,
+                            metadata: c.metadata,
+                            blockLight: c.blockLight,
+                            skyLight: c.skyLight,
+                            position: {x: c.x, y: c.y, z: c.z},
                             build: false
                         });
                     }
                 }
-                buffers.push(chunk.transBlocks.buffer, chunk.transMetadata.buffer);
+                buffers.push(chunk.transBlocks.buffer, chunk.transMetadata.buffer, chunk.transBlockLight.buffer, chunk.transSkyLight.buffer);
+                this.queuedChunks.splice(i, 1);
             }
             this.worker.postMessage(chunks, buffers);
-            this.queuedChunks = [];
         },
         rebuildDirty: function () {
             var chunks = this.chunks;
@@ -388,6 +400,15 @@
                 var c = this.getChunk(x + d[i].x, y + d[i].y, z + d[i].z);
                 if (c) {
                     chunks.push(c);
+                }
+            }
+            return chunks;
+        },
+        filterChunks: function (filter) {
+            var chunks = [];
+            for (var c in this.chunks) {
+                if (filter(this.chunks[c])) {
+                    chunks.push(this.chunks[c]);
                 }
             }
             return chunks;
@@ -446,7 +467,9 @@
             if (!offset || x < 0 || y < 0 || z < 0 || x >= 32 || y >= 32 || z >= 32) {
                 return {
                     blocks: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE),
-                    metadata: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2)
+                    metadata: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2),
+                    blockLight: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2),
+                    skyLight: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2)
                 };
             }
             this.stream.index = offset * 0x1000;
@@ -457,12 +480,16 @@
             for (var i = 0; i < sections.length; ++i) {
                 this.chunks[x + '_' + sections[i].Y + '_' + z] = {
                     blocks: sections[i].Blocks,
-                    metadata: sections[i].Data
+                    metadata: sections[i].Data,
+                    blockLight: sections[i].BlockLight,
+                    skyLight: sections[i].SkyLight
                 };
             }
             return this.chunks[x + '_' + y + '_' + z] || (this.chunks[x + '_' + y + '_' + z] = {
                 blocks: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE),
-                metadata: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2)
+                metadata: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2),
+                blockLight: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2),
+                skyLight: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2),
             });
         }
     }),
@@ -474,11 +501,22 @@
         this.z = z;
         this.blocks = data.blocks;
         this.metadata = data.metadata;
+        this.blockLight = data.blockLight;
+        this.skyLight = data.skyLight;
         this.transBlocks = new Uint8Array(data.blocks.length);
         this.transBlocks.set(this.blocks);
         this.transMetadata = new Uint8Array(data.metadata.length);
         this.transMetadata.set(this.metadata);
+        this.transBlockLight = new Uint8Array(data.blockLight.length);
+        this.transBlockLight.set(this.metadata);
+        this.transSkyLight = new Uint8Array(data.skyLight.length);
+        this.transSkyLight.set(this.metadata);
         this.buildMesh();
+        var s = this.world.getSurroundingChunks();
+        for (var i = 0; i < s.length; i++) {
+            var c = s[i];
+            c.buildMesh();
+        }
     }
     extend(mc.Chunk.prototype, {
         setBlock: function (x, y, z, id) {
@@ -512,18 +550,20 @@
         },
 
         buildMesh: function () {
-            if (!this.transBlocks.buffer) {
+            if (this.queued) {
                 return;
             }
             this.queued = true;
             this.world.queueChunk(this);
         },
         isBuilding: function () {
-            return !this.transBlocks.buffer;
+            return !(this.transBlocks && this.transBlocks.buffer);
         },
         setGeometryBuffer: function (res) {
             this.transBlocks = res.blocks;
             this.transMetadata = res.metadata;
+            this.transBlockLight = res.blockLight;
+            this.transSkyLight = res.skyLight;
             var geometry = new THREE.BufferGeometry();
             geometry.dynamic = true;
             this.attributes = geometry.attributes = res.attributes;
