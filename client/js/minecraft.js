@@ -19,7 +19,6 @@
     mc.textures.terrain.magFilter = THREE.NearestFilter;
     mc.textures.terrain.minFilter = THREE.NearestFilter;
     mc.shaders.terrain.map = mc.textures.terrain;
-    //mc.shaders.terrain.uniforms.map.value = mc.textures.terrain;
     mc.materials = {
         terrain: mc.shaders.terrain
     };
@@ -59,7 +58,7 @@
 
         this.scene = new THREE.Scene();
 
-        this.scene.add(new THREE.AmbientLight(0xffd8aa));
+        this.scene.add(new THREE.AmbientLight(0xffd880));
 
         //var light = new THREE.PointLight(0x4c3d26, 6, 8);
         //this.scene.add(light);
@@ -512,10 +511,9 @@
         this.transSkyLight = new Uint8Array(data.skyLight.length);
         this.transSkyLight.set(this.metadata);
         this.buildMesh();
-        var s = this.world.getSurroundingChunks();
+        var s = this.world.getSurroundingChunks(this.x, this.y, this.z);
         for (var i = 0; i < s.length; i++) {
-            var c = s[i];
-            c.buildMesh();
+            s[i].buildMesh();
         }
     }
     extend(mc.Chunk.prototype, {
