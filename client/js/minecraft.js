@@ -487,8 +487,14 @@
                     blocks: sections[i].Blocks,
                     metadata: sections[i].Data,
                     blockLight: sections[i].BlockLight,
-                    skyLight: sections[i].SkyLight
+                    skyLight: sections[i].SkyLight,
+                    entities: [],
+                    tileEntities: []
                 };
+            }
+            for (var i = 0; i < level.TileEntities.length; i++) {
+                var te = level.TileEntities[i];
+                this.chunks[x + '_' + Math.floor(te.y / mc.CHUNK_SIZE) + '_' + z].tileEntities.push(te);
             }
             return this.chunks[x + '_' + y + '_' + z] || (this.chunks[x + '_' + y + '_' + z] = {
                 blocks: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE),
