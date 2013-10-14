@@ -107,6 +107,12 @@
 
         this.world.mc.element.addEventListener('keypress', function (e) {
             switch (String.fromCharCode(e.keyCode)) {
+            case 'b':
+                this.world.setBlock(this.position.x | 0, (this.position.y | 0) - 2, this.position.z | 0, 0);
+                break;
+            case 'p':
+                this.world.setBlock(this.position.x | 0, (this.position.y | 0) - 2, this.position.z | 0, 1);
+                break;
             case 'f':
                 this.flying = !this.flying;
                 break;
@@ -578,7 +584,10 @@
             this.mesh = mesh;
             this.world.updateGeometry(this);
             this.queued = false;
-            if (this.diff) {
+            this.applyDiff();
+        },
+        applyDiff: function () {
+            if (this.diff && !this.isBuilding()) {
                 for (var i in this.diff) {
                     this.transBlocks[i] = this.diff[i];
                 }
