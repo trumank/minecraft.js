@@ -106,5 +106,5 @@ mc.shaders.terrain = new THREE.ShaderMaterial({
 mc.shaders.terrain = new THREE.MeshLambertMaterial({
     vertexColors: THREE.VertexColors,
     gammaOutput: true,
-    shading: THREE.FlatShading
+    alphaTest: 0.5
 });

@@ -62,22 +62,23 @@
             var d = Math.sqrt(1/8);
             var mx = x + 0.5;
             var mz = z + 0.5;
-            f.quad(f.vertex(mx + d, y, mz + d, f.uvx(i, 0), f.uvy(i, 0)),
-                f.vertex(mx + d, y + 1, mz + d, f.uvx(i, 1), f.uvy(i, 1)),
-                f.vertex(mx - d, y + 1, mz - d, f.uvx(i, 2), f.uvy(i, 2)),
-                f.vertex(mx - d, y, mz - d, f.uvx(i, 3), f.uvy(i, 3)));
-            f.quad(f.vertex(mx - d, y, mz - d, f.uvx(i, 3), f.uvy(i, 3)),
-                f.vertex(mx - d, y + 1, mz - d, f.uvx(i, 2), f.uvy(i, 2)),
-                f.vertex(mx + d, y + 1, mz + d, f.uvx(i, 1), f.uvy(i, 1)),
-                f.vertex(mx + d, y, mz + d, f.uvx(i, 0), f.uvy(i, 0)));
-            f.quad(f.vertex(mx + d, y, mz - d, f.uvx(i, 0), f.uvy(i, 0)),
-                f.vertex(mx + d, y + 1, mz - d, f.uvx(i, 1), f.uvy(i, 1)),
-                f.vertex(mx - d, y + 1, mz + d, f.uvx(i, 2), f.uvy(i, 2)),
-                f.vertex(mx - d, y, mz + d, f.uvx(i, 3), f.uvy(i, 3)));
-            f.quad(f.vertex(mx - d, y, mz + d, f.uvx(i, 3), f.uvy(i, 3)),
-                f.vertex(mx - d, y + 1, mz + d, f.uvx(i, 2), f.uvy(i, 2)),
-                f.vertex(mx + d, y + 1, mz - d, f.uvx(i, 1), f.uvy(i, 1)),
-                f.vertex(mx + d, y, mz - d, f.uvx(i, 0), f.uvy(i, 0)));
+            var c = f.getBlockLight(x, y, z) / 12 + 0.2;
+            f.quad(f.vertex(mx + d, y, mz + d, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                f.vertex(mx + d, y + 1, mz + d, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx - d, y + 1, mz - d, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx - d, y, mz - d, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            f.quad(f.vertex(mx - d, y, mz - d, c, c, c, f.uvx(i, 3), f.uvy(i, 3)),
+                f.vertex(mx - d, y + 1, mz - d, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx + d, y + 1, mz + d, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx + d, y, mz + d, c, c, c, f.uvx(i, 0), f.uvy(i, 0)));
+            f.quad(f.vertex(mx + d, y, mz - d, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
+                f.vertex(mx + d, y + 1, mz - d, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx - d, y + 1, mz + d, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx - d, y, mz + d, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            f.quad(f.vertex(mx - d, y, mz + d, c, c, c, f.uvx(i, 3), f.uvy(i, 3)),
+                f.vertex(mx - d, y + 1, mz + d, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
+                f.vertex(mx + d, y + 1, mz - d, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
+                f.vertex(mx + d, y, mz - d, c, c, c, f.uvx(i, 0), f.uvy(i, 0)));
         },
         liquid: function (block, metadata, x, y, z, f) {
             var i = block.faces;
