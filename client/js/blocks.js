@@ -2,54 +2,144 @@
     obj.models = {
         cube: function (block, metdata, x, y, z, f) {
             var faces = block.faces;
-            var i, c;
-            if (!f.isBlockSolid(x + 1, y, z)) {
-                i = faces[0];
-                c = f.getBlockLight(x + 1, y, z) / 12 + 0.2;
-                f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            var i, c, a, b, c, d;
+            if (!f.isBlockOpaque(x + 1, y, z)) {
+                a = (f.getBlockLight(x + 1, y,     z    ) +
+                     f.getBlockLight(x + 1, y - 1, z    ) +
+                     f.getBlockLight(x + 1, y,     z - 1) +
+                     f.getBlockLight(x + 1, y - 1, z - 1)) / 4;
+                b = (f.getBlockLight(x + 1, y,     z    ) +
+                     f.getBlockLight(x + 1, y + 1, z    ) +
+                     f.getBlockLight(x + 1, y,     z - 1) +
+                     f.getBlockLight(x + 1, y + 1, z - 1)) / 4;
+                c = (f.getBlockLight(x + 1, y,     z    ) +
+                     f.getBlockLight(x + 1, y + 1, z    ) +
+                     f.getBlockLight(x + 1, y,     z + 1) +
+                     f.getBlockLight(x + 1, y + 1, z + 1)) / 4;
+                d = (f.getBlockLight(x + 1, y,     z    ) +
+                     f.getBlockLight(x + 1, y - 1, z    ) +
+                     f.getBlockLight(x + 1, y,     z + 1) +
+                     f.getBlockLight(x + 1, y - 1, z + 1)) / 4;
+                f.squad(faces[0],
+                    x + 1, y,     z,     a,
+                    x + 1, y + 1, z,     b,
+                    x + 1, y + 1, z + 1, c,
+                    x + 1, y,     z + 1, d);
             }
-            if (!f.isBlockSolid(x - 1, y, z)) {
-                i = faces[1];
-                c = f.getBlockLight(x - 1, y, z) / 12 + 0.2;
-                f.quad(f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            if (!f.isBlockOpaque(x - 1, y, z)) {
+                a = (f.getBlockLight(x - 1, y,     z    ) +
+                     f.getBlockLight(x - 1, y - 1, z    ) +
+                     f.getBlockLight(x - 1, y,     z + 1) +
+                     f.getBlockLight(x - 1, y - 1, z + 1)) / 4;
+                b = (f.getBlockLight(x - 1, y,     z    ) +
+                     f.getBlockLight(x - 1, y + 1, z    ) +
+                     f.getBlockLight(x - 1, y,     z + 1) +
+                     f.getBlockLight(x - 1, y + 1, z + 1)) / 4;
+                c = (f.getBlockLight(x - 1, y,     z    ) +
+                     f.getBlockLight(x - 1, y + 1, z    ) +
+                     f.getBlockLight(x - 1, y,     z - 1) +
+                     f.getBlockLight(x - 1, y + 1, z - 1)) / 4;
+                d = (f.getBlockLight(x - 1, y,     z    ) +
+                     f.getBlockLight(x - 1, y - 1, z    ) +
+                     f.getBlockLight(x - 1, y,     z - 1) +
+                     f.getBlockLight(x - 1, y - 1, z - 1)) / 4;
+                f.squad(faces[1],
+                    x, y,     z + 1, a,
+                    x, y + 1, z + 1, b,
+                    x, y + 1, z,     c,
+                    x, y,     z,     d);
             }
-            if (!f.isBlockSolid(x, y + 1, z)) {
-                i = faces[2];
-                c = f.getBlockLight(x, y + 1, z) / 12 + 0.2;
-                f.quad(f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            if (!f.isBlockOpaque(x, y + 1, z)) {
+                a = (f.getBlockLight(x,     y + 1, z    ) +
+                     f.getBlockLight(x - 1, y + 1, z    ) +
+                     f.getBlockLight(x,     y + 1, z - 1) +
+                     f.getBlockLight(x - 1, y + 1, z - 1)) / 4;
+                b = (f.getBlockLight(x,     y + 1, z    ) +
+                     f.getBlockLight(x - 1, y + 1, z    ) +
+                     f.getBlockLight(x,     y + 1, z + 1) +
+                     f.getBlockLight(x - 1, y + 1, z + 1)) / 4;
+                c = (f.getBlockLight(x,     y + 1, z    ) +
+                     f.getBlockLight(x + 1, y + 1, z    ) +
+                     f.getBlockLight(x,     y + 1, z + 1) +
+                     f.getBlockLight(x + 1, y + 1, z + 1)) / 4;
+                d = (f.getBlockLight(x,     y + 1, z    ) +
+                     f.getBlockLight(x + 1, y + 1, z    ) +
+                     f.getBlockLight(x,     y + 1, z - 1) +
+                     f.getBlockLight(x + 1, y + 1, z - 1)) / 4;
+                f.squad(faces[2],
+                    x,     y + 1, z,     a,
+                    x,     y + 1, z + 1, b,
+                    x + 1, y + 1, z + 1, c,
+                    x + 1, y + 1, z,     d);
             }
-            if (!f.isBlockSolid(x, y - 1, z)) {
-                i = faces[3];
-                c = f.getBlockLight(x, y - 1, z) / 12 + 0.2;
-                f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            if (!f.isBlockOpaque(x, y - 1, z)) {
+                a = (f.getBlockLight(x,     y - 1, z    ) +
+                     f.getBlockLight(x + 1, y - 1, z    ) +
+                     f.getBlockLight(x,     y - 1, z - 1) +
+                     f.getBlockLight(x + 1, y - 1, z - 1)) / 4;
+                b = (f.getBlockLight(x,     y - 1, z    ) +
+                     f.getBlockLight(x + 1, y - 1, z    ) +
+                     f.getBlockLight(x,     y - 1, z + 1) +
+                     f.getBlockLight(x + 1, y - 1, z + 1)) / 4;
+                c = (f.getBlockLight(x,     y - 1, z    ) +
+                     f.getBlockLight(x - 1, y - 1, z    ) +
+                     f.getBlockLight(x,     y - 1, z + 1) +
+                     f.getBlockLight(x - 1, y - 1, z + 1)) / 4;
+                d = (f.getBlockLight(x,     y - 1, z    ) +
+                     f.getBlockLight(x - 1, y - 1, z    ) +
+                     f.getBlockLight(x,     y - 1, z - 1) +
+                     f.getBlockLight(x - 1, y - 1, z - 1)) / 4;
+                f.squad(faces[3],
+                    x + 1, y, z,     a,
+                    x + 1, y, z + 1, b,
+                    x,     y, z + 1, c,
+                    x,     y, z,     d);
             }
-            if (!f.isBlockSolid(x, y, z + 1)) {
-                i = faces[4];
-                c = f.getBlockLight(x, y, z + 1) / 12 + 0.2;
-                f.quad(f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            if (!f.isBlockOpaque(x, y, z + 1)) {
+                a = (f.getBlockLight(x,     y,     z + 1) +
+                     f.getBlockLight(x + 1, y,     z + 1) +
+                     f.getBlockLight(x,     y - 1, z + 1) +
+                     f.getBlockLight(x + 1, y - 1, z + 1)) / 4;
+                b = (f.getBlockLight(x,     y,     z + 1) +
+                     f.getBlockLight(x + 1, y,     z + 1) +
+                     f.getBlockLight(x,     y + 1, z + 1) +
+                     f.getBlockLight(x + 1, y + 1, z + 1)) / 4;
+                c = (f.getBlockLight(x,     y,     z + 1) +
+                     f.getBlockLight(x - 1, y,     z + 1) +
+                     f.getBlockLight(x,     y + 1, z + 1) +
+                     f.getBlockLight(x - 1, y + 1, z + 1)) / 4;
+                d = (f.getBlockLight(x,     y,     z + 1) +
+                     f.getBlockLight(x - 1, y,     z + 1) +
+                     f.getBlockLight(x,     y - 1, z + 1) +
+                     f.getBlockLight(x - 1, y - 1, z + 1)) / 4;
+                f.squad(faces[4],
+                    x + 1, y,     z + 1, a,
+                    x + 1, y + 1, z + 1, b,
+                    x,     y + 1, z + 1, c,
+                    x,     y,     z + 1, d);
             }
-            if (!f.isBlockSolid(x, y, z - 1)) {
-                i = faces[5];
-                c = f.getBlockLight(x, y, z - 1) / 12 + 0.2;
-                f.quad(f.vertex(x, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
-                    f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
-                    f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
-                    f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
+            if (!f.isBlockOpaque(x, y, z - 1)) {
+                a = (f.getBlockLight(x,     y,     z - 1) +
+                     f.getBlockLight(x - 1, y,     z - 1) +
+                     f.getBlockLight(x,     y - 1, z - 1) +
+                     f.getBlockLight(x - 1, y - 1, z - 1)) / 4;
+                b = (f.getBlockLight(x,     y,     z - 1) +
+                     f.getBlockLight(x - 1, y,     z - 1) +
+                     f.getBlockLight(x,     y + 1, z - 1) +
+                     f.getBlockLight(x - 1, y + 1, z - 1)) / 4;
+                c = (f.getBlockLight(x,     y,     z - 1) +
+                     f.getBlockLight(x + 1, y,     z - 1) +
+                     f.getBlockLight(x,     y + 1, z - 1) +
+                     f.getBlockLight(x + 1, y + 1, z - 1)) / 4;
+                d = (f.getBlockLight(x,     y,     z - 1) +
+                     f.getBlockLight(x + 1, y,     z - 1) +
+                     f.getBlockLight(x,     y - 1, z - 1) +
+                     f.getBlockLight(x + 1, y - 1, z - 1)) / 4;
+                f.squad(faces[5],
+                    x,     y,     z, a,
+                    x,     y + 1, z, b,
+                    x + 1, y + 1, z, c,
+                    x + 1, y,     z, d);
             }
         },
         typed: function (block, metadata, x, y, z, f) {
@@ -83,42 +173,42 @@
         liquid: function (block, metadata, x, y, z, f) {
             var i = block.faces;
             var i, c;
-            if (!f.isBlockSolid(x + 1, y, z) && f.getBlock(x + 1, y, z) !== block.id) {
+            if (!f.isBlockOpaque(x + 1, y, z) && f.getBlock(x + 1, y, z) !== block.id) {
                 c = f.getBlockLight(x + 1, y, z) / 12 + 0.2;
                 f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
                     f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
                     f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
                     f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
-            if (!f.isBlockSolid(x - 1, y, z) && f.getBlock(x - 1, y, z) !== block.id) {
+            if (!f.isBlockOpaque(x - 1, y, z) && f.getBlock(x - 1, y, z) !== block.id) {
                 c = f.getBlockLight(x - 1, y, z) / 12 + 0.2;
                 f.quad(f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
                     f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
                     f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
                     f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
-            if (!f.isBlockSolid(x, y + 1, z) && f.getBlock(x, y + 1, z) !== block.id) {
+            if (!f.isBlockOpaque(x, y + 1, z) && f.getBlock(x, y + 1, z) !== block.id) {
                 c = f.getBlockLight(x, y + 1, z) / 12 + 0.2;
                 f.quad(f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
                     f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
                     f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
                     f.vertex(x + 1, y + 1, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
-            if (!f.isBlockSolid(x, y - 1, z) && f.getBlock(x, y - 1, z) !== block.id) {
+            if (!f.isBlockOpaque(x, y - 1, z) && f.getBlock(x, y - 1, z) !== block.id) {
                 c = f.getBlockLight(x, y - 1, z) / 12 + 0.2;
                 f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
                     f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
                     f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
                     f.vertex(x, y, z, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
-            if (!f.isBlockSolid(x, y, z + 1) && f.getBlock(x, y, z + 1) !== block.id) {
+            if (!f.isBlockOpaque(x, y, z + 1) && f.getBlock(x, y, z + 1) !== block.id) {
                 c = f.getBlockLight(x, y, z + 1) / 12 + 0.2;
                 f.quad(f.vertex(x + 1, y, z + 1, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
                     f.vertex(x + 1, y + 1, z + 1, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
                     f.vertex(x, y + 1, z + 1, c, c, c, f.uvx(i, 2), f.uvy(i, 2)),
                     f.vertex(x, y, z + 1, c, c, c, f.uvx(i, 3), f.uvy(i, 3)));
             }
-            if (!f.isBlockSolid(x, y, z - 1) && f.getBlock(x, y, z - 1) !== block.id) {
+            if (!f.isBlockOpaque(x, y, z - 1) && f.getBlock(x, y, z - 1) !== block.id) {
                 c = f.getBlockLight(x, y, z - 1) / 12 + 0.2;
                 f.quad(f.vertex(x, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
                     f.vertex(x, y + 1, z, c, c, c, f.uvx(i, 1), f.uvy(i, 1)),
@@ -216,7 +306,8 @@
         },
         20: {
             name: 'glass',
-            faces: 49
+            faces: 49,
+            transparent: true
         },
         21: {
             name: 'lapis ore',

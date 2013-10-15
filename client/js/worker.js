@@ -94,6 +94,31 @@ function build(chunk) {
             indices.push(c);
             indices.push(d);
         },
+        squad: function (i, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) {
+            var ac = s1 / 12 + 0.2;
+            var a = f.vertex(x1, y1, z1, ac, ac, ac, f.uvx(i, 0), f.uvy(i, 0));
+            var bc = s2 / 12 + 0.2;
+            var b = f.vertex(x2, y2, z2, bc, bc, bc, f.uvx(i, 1), f.uvy(i, 1));
+            var cc = s3 / 12 + 0.2;
+            var c = f.vertex(x3, y3, z3, cc, cc, cc, f.uvx(i, 2), f.uvy(i, 2));
+            var dc = s4 / 12 + 0.2;
+            var d = f.vertex(x4, y4, z4, dc, dc, dc, f.uvx(i, 3), f.uvy(i, 3));
+            if (s1 + s3 > s2 + s4) {
+                indices.push(a);
+                indices.push(b);
+                indices.push(c);
+                indices.push(a);
+                indices.push(c);
+                indices.push(d);
+            } else {
+                indices.push(b);
+                indices.push(c);
+                indices.push(d);
+                indices.push(b);
+                indices.push(d);
+                indices.push(a);
+            }
+        },
         getBlock: function(x, y, z) {
             if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
                 var cx = (x + chunkSize * pos.x) >> 4;
@@ -135,10 +160,10 @@ function build(chunk) {
         getSkyLight: function (x, y, z) {
             return f.getProp(x, y, z, 'skyLight');
         },
-        isBlockSolid: function(x, y, z) {
+        isBlockOpaque: function(x, y, z) {
             var id = f.getBlock(x, y, z);
             if (self.blocks[id]) {
-                return self.blocks[id].solid;
+                return self.blocks[id].solid && !self.blocks[id].transparent;
             } else if (id === -1) {
                 return true;
             }
