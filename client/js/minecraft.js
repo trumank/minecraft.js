@@ -66,21 +66,17 @@
 
         this.scene.add(new THREE.AmbientLight(0xffd880));
 
-        //var light = new THREE.PointLight(0x4c3d26, 6, 8);
-        //this.scene.add(light);
-
         this.world = new mc.World(this, region);
         this.camera = new THREE.PerspectiveCamera(120, width / height, 0.001, 20000);
-        this.selector = cube = new THREE.Mesh(new THREE.CubeGeometry(1.05, 1.05, 1.05), new THREE.MeshBasicMaterial({
+        this.selector = cube = new THREE.Mesh(new THREE.CubeGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
             color: 0x00ee00,
             wireframe: true,
+            wireframeLinewidth: 2,
             transparent: true
         }));
         this.scene.add(this.selector);
         this.player = new mc.Player(this.world, 'Player', this.camera, this.selector);
         this.player.position.set(318, 89, 143);
-        //this.selector.position = this.player.position;
-        //light.position = this.player.position;
 
         container.appendChild(this.element);
         this.stats = new Stats();
