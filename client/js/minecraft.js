@@ -22,12 +22,20 @@
     };
 
     mc.Minecraft = function (container, width, height) {
+        this.element = document.createElement('div');
+        this.element.setAttribute('id', 'content');
+        this.element.setAttribute('tabindex', '0');
+
+        var cursor = document.createElement('div');
+        cursor.setAttribute('id', 'cursor');
+        this.element.appendChild(cursor);
+
         this.renderer = new THREE.WebGLRenderer();
         this.renderer.setSize(width, height);
         this.renderer.setClearColor(0x101010); // sky: :0xbfd1e5
 
-        this.element = this.renderer.domElement;
-        this.element.setAttribute('tabindex', '0');
+        this.canvas = this.renderer.domElement;
+        this.element.appendChild(this.canvas);
 
         var keysDown = this.keysDown = [];
         var mouseMovement = this.mouseMovement = new THREE.Vector2(0, 0);
@@ -74,7 +82,7 @@
         //this.selector.position = this.player.position;
         //light.position = this.player.position;
 
-        container.appendChild(this.renderer.domElement);
+        container.appendChild(this.element);
         this.stats = new Stats();
         this.stats.domElement.style.position = 'absolute';
         this.stats.domElement.style.top = '0px';
