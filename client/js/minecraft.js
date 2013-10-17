@@ -14,8 +14,6 @@
     mc.textures = {
         terrain: THREE.ImageUtils.loadTexture('img/32x32 terrain.png')
     };
-    mc.textures.terrain.wrapS = THREE.RepeatWrapping;
-    mc.textures.terrain.wrapT = THREE.RepeatWrapping;
     mc.textures.terrain.magFilter = THREE.NearestFilter;
     mc.textures.terrain.minFilter = THREE.NearestFilter;
     mc.shaders.terrain.map = mc.textures.terrain;
@@ -39,7 +37,7 @@
         }
 
         var self = this;
-        
+
         this.element.addEventListener('click', function (e) {
             self.element.webkitRequestPointerLock();
         });
@@ -64,9 +62,16 @@
         //this.scene.add(light);
 
         this.world = new mc.World(this, region);
-        this.player = new mc.Player(this.world, 'Player', new THREE.PerspectiveCamera(120, width / height, 0.001, 20000));
-
+        this.camera = new THREE.PerspectiveCamera(120, width / height, 0.001, 20000);
+        this.selector = cube = new THREE.Mesh(new THREE.CubeGeometry(1.05, 1.05, 1.05), new THREE.MeshBasicMaterial({
+            color: 0x00ee00,
+            wireframe: true,
+            transparent: true
+        }));
+        this.scene.add(this.selector);
+        this.player = new mc.Player(this.world, 'Player', this.camera, this.selector);
         this.player.position.set(318, 89, 143);
+        //this.selector.position = this.player.position;
         //light.position = this.player.position;
 
         container.appendChild(this.renderer.domElement);
@@ -96,14 +101,17 @@
         }
     });
 
-    mc.Player = function (world, name, camera) {
+    mc.Player = function (world, name, camera, selector) {
         this.world = world;
         this.name = name;
         this.camera = camera;
+        this.selector = selector;
+        this.selected = null;
         this.velocity = new THREE.Vector3(0, 0, 0);
         this.position = camera.position;
         this.speed = 0.1;
         this.lat = this.lon = 0;
+        this.facing = new THREE.Vector3(1,0,0);
 
         this.world.mc.element.addEventListener('keypress', function (e) {
             switch (String.fromCharCode(e.keyCode)) {
@@ -118,6 +126,14 @@
                 break;
             }
         }.bind(this));
+
+        this.world.mc.element.addEventListener('click', function (e) {
+            if (e.button === 0) {
+                this.breakBlock();
+            } else if (e.button === 2) {
+                this.placeBlock();
+            }
+        }.bind(this));
     };
     extend(mc.Player.prototype, {
         tick: function () {
@@ -129,8 +145,8 @@
 
             var phi = (90 - this.lat) * Math.PI / 180;
             var theta = this.lon * Math.PI / 180;
-
-            this.camera.lookAt(this.position.clone().add(new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta))));
+            this.facing = new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta));
+            this.camera.lookAt(this.position.clone().add(this.facing));
             var oldFov = this.camera.fov;
             this.camera.fov = this.world.mc.keysDown[17] ? 30 : 120; // zoom
             if (oldFov !== this.camera.fov) {
@@ -202,7 +218,8 @@
                     }
                 }
             }
-            this.world.rebuildDirty();
+
+            this.updateSelection();
         },
         correctCollision: function () {
             var oldbb = this.getBoundingBox().translate(this.velocity.clone().negate());
@@ -283,6 +300,68 @@
         getBoundingBox: function () {
             var p = this.position;
             return new THREE.Box3(new THREE.Vector3(p.x - 0.2, p.y - 1.5, p.z - 0.2), new THREE.Vector3(p.x + 0.2, p.y + 0.3, p.z + 0.2));
+        },
+        updateSelection: function () {
+            var r = 5;
+            var boxes = [];
+            var pos = new THREE.Vector3(Math.floor(this.position.x), Math.floor(this.position.y), Math.floor(this.position.z));
+            for (var x = -r; x <= r; x++) {
+                for (var y = -r; y <= r; y++) {
+                    for (var z = -r; z <= r; z++) {
+                        boxes = boxes.concat(this.world.getAABBs(pos.x + x, pos.y + y, pos.z + z));
+                    }
+                }
+            }
+            var min = Infinity;
+            var box = null;
+            for (var i = 0; i < boxes.length; i++) {
+                var time = this.testBox(boxes[i]);
+                if (time !== false && time < min) {
+                    min = time;
+                    box = boxes[i];
+                }
+            }
+            if (box) {
+                this.selector.position = box.center();
+                this.selector.visible = true;
+                this.selected = box.position;
+            } else {
+                this.selector.visible = false;
+                this.selected = null;
+            }
+        },
+        testBox: function (box) {
+            var dirfrac = new THREE.Vector3(1 / this.facing.x, 1 / this.facing.y, 1 / this.facing.z);
+            var org = this.position;
+            var t1 = (box.min.x - org.x) * dirfrac.x;
+            var t2 = (box.max.x - org.x) * dirfrac.x;
+            var t3 = (box.min.y - org.y) * dirfrac.y;
+            var t4 = (box.max.y - org.y) * dirfrac.y;
+            var t5 = (box.min.z - org.z) * dirfrac.z;
+            var t6 = (box.max.z - org.z) * dirfrac.z;
+
+            var tmin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
+            var tmax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
+
+            if (tmax < 0) {
+                t = tmax;
+                return false;
+            } else if (tmin > tmax) {
+                return false;
+            }
+            return tmin;
+        },
+        breakBlock: function () {
+            var p = this.selected;
+            if (p) {
+                this.world.setBlock(p.x, p.y, p.z, 0);
+            }
+        },
+        placeBlock: function () {
+            var p = this.selected;
+            if (p) {
+                this.world.setBlock(p.x, p.y, p.z, 1);
+            }
         }
     });
 
@@ -435,6 +514,15 @@
             var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
             return chunk ? chunk.getBlock(mx, my, mz) : 0;
         },
+        getAABBs: function (x, y, z) {
+            var id = this.getBlock(x, y, z)
+            if (!id) {
+                return [];
+            }
+            var b = new THREE.Box3(new THREE.Vector3(x, y, z), new THREE.Vector3(x + 1, y + 1, z + 1));
+            b.position = new THREE.Vector3(x, y, z);
+            return [b];
+        },
         isBlockSolid: function (x, y, z) {
             var mx = mod(x, mc.CHUNK_SIZE);
             var my = mod(y, mc.CHUNK_SIZE);
@@ -541,6 +629,31 @@
                 this.transBlocks[index] = id;
             }
             this.buildMesh();
+            var c;
+            if (x === 0) {
+                c = this.world.getChunk(this.x - 1, this.y, this.z);
+                if (c) c.buildMesh();
+            }
+            if (x === mc.CHUNK_SIZE - 1) {
+                c = this.world.getChunk(this.x + 1, this.y, this.z);
+                if (c) c.buildMesh();
+            }
+            if (y === 0) {
+                c = this.world.getChunk(this.x, this.y - 1, this.z);
+                if (c) c.buildMesh();
+            }
+            if (y === mc.CHUNK_SIZE - 1) {
+                c = this.world.getChunk(this.x, this.y + 1, this.z);
+                if (c) c.buildMesh();
+            }
+            if (z === 0) {
+                c = this.world.getChunk(this.x, this.y, this.z - 1);
+                if (c) c.buildMesh();
+            }
+            if (z === mc.CHUNK_SIZE - 1) {
+                c = this.world.getChunk(this.x, this.y, this.z + 1);
+                if (c) c.buildMesh();
+            }
         },
         getBlock: function (x, y, z) {
             if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.CHUNK_SIZE || z < 0 || z >= mc.CHUNK_SIZE) {
