@@ -419,7 +419,8 @@
         },
         52: {
             name: 'spawner',
-            faces: 65
+            faces: 65,
+            transparent: true
         },
         // ...
         56: {
