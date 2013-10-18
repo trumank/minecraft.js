@@ -115,7 +115,8 @@
         this.position = camera.position;
         this.speed = 0.1;
         this.lat = this.lon = 0;
-        this.facing = new THREE.Vector3(1,0,0);
+        this.facing = new THREE.Vector3(1, 0, 0);
+        this.heldItem = 1;
 
         this.world.mc.element.addEventListener('keypress', function (e) {
             switch (String.fromCharCode(e.keyCode)) {
@@ -134,6 +135,8 @@
         this.world.mc.element.addEventListener('click', function (e) {
             if (e.button === 0) {
                 this.breakBlock();
+            } else if (e.button === 1) {
+                this.pickBlock();
             } else if (e.button === 2) {
                 this.placeBlock();
             }
@@ -329,9 +332,11 @@
                 this.selector.position = box.center();
                 this.selector.visible = true;
                 this.selected = box.position;
+                this.selectedFace = this.findSelectedFace(box);
             } else {
                 this.selector.visible = false;
                 this.selected = null;
+                this.selectedFace = null;
             }
         },
         testBox: function (box) {
@@ -355,16 +360,81 @@
             }
             return tmin;
         },
+        findSelectedFace: function (box) {
+            var b = box.translate(this.position.clone().negate());
+            var f = this.facing;
+            var X_FACE = 0;
+            var Y_FACE = 1;
+            var Z_FACE = 2;
+            var MAX_FACE = 4;
+
+            function hit_face(uhit, vhit, umin, umax, vmin, vmax) {
+                return (umin <= uhit && uhit <= umax && vmin <= vhit && vhit <= vmax);
+            }
+
+            var times = [];
+            var hits = [];
+            var faces = [];
+            var t;
+            if (f.x !== 0) {
+                t = b.min.x / f.x;
+                if (t > 0 && hit_face(t * f.y, t * f.z, b.min.y, b.max.y, b.min.z, b.max.z)) {
+                    faces.push({t: t, f: new THREE.Vector3(-1, 0, 0)});
+                }
+                t = b.max.x / f.x;
+                if (t > 0 && hit_face(t * f.y, t * f.z, b.min.y, b.max.y, b.min.z, b.max.z)) {
+                    faces.push({t: t, f: new THREE.Vector3(1, 0, 0)});
+                }
+            }
+            if (f.y !== 0) {
+                t = b.min.y / f.y;
+                if (t > 0 && hit_face(t * f.x, t * f.z, b.min.x, b.max.x, b.min.z, b.max.z)) {
+                    faces.push({t: t, f: new THREE.Vector3(0, -1, 0)});
+                }
+                t = b.max.y / f.y;
+                if (t > 0 && hit_face(t * f.x, t * f.z, b.min.x, b.max.x, b.min.z, b.max.z)) {
+                    faces.push({t: t, f: new THREE.Vector3(0, 1, 0)});
+                }
+            }
+            if (f.z !== 0) {
+                t = b.min.z / f.z;
+                if (t > 0 && hit_face(t * f.x, t * f.y, b.min.x, b.max.x, b.min.y, b.max.y)) {
+                    faces.push({t: t, f: new THREE.Vector3(0, 0, -1)});
+                }
+                t = b.max.z / f.z;
+                if (t > 0 && hit_face(t * f.x, t * f.y, b.min.x, b.max.x, b.min.y, b.max.y)) {
+                    faces.push({t: t, f: new THREE.Vector3(0, 0, 1)});
+                }
+            }
+            if (faces.length === 0) {
+                return null;
+            }
+            t = Infinity;
+            var f;
+            for (var i = 0; i < faces.length; i++) {
+                if (faces[i].t < t) {
+                    t = faces[i].t
+                    f = faces[i].f;
+                }
+            }
+            return f;
+        },
         breakBlock: function () {
             var p = this.selected;
             if (p) {
                 this.world.setBlock(p.x, p.y, p.z, 0);
             }
         },
-        placeBlock: function () {
+        pickBlock: function () {
             var p = this.selected;
             if (p) {
-                this.world.setBlock(p.x, p.y, p.z, 1);
+                this.heldItem = this.world.getBlock(p.x, p.y, p.z);
+            }
+        },
+        placeBlock: function () {
+            if (this.selected) {
+                var p = this.selected.clone().add(this.selectedFace);
+                this.world.setBlock(p.x, p.y, p.z, this.heldItem);
             }
         }
     });
