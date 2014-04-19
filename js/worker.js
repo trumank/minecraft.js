@@ -1,10 +1,12 @@
 importScripts('blocks.js', 'dynamicArray.js');
 
 var chunkSize = 16;
-var textureWidth = 16;
-var textureHeight = 16;
-var incX = [0, 0, 1 / textureWidth, 1 / textureWidth];
-var incY = [0, 1 / textureHeight, 1 / textureHeight, 0];
+var size;
+var tileWidth;
+var tileHeight;
+var incX;
+var incY;
+var indexes;
 
 var queue = [];
 var chunks = {};
@@ -44,6 +46,14 @@ function next() {
 }
 
 self.onmessage = function(e) {
+    if (e.data.config) {
+        size = e.data.size;
+        tileWidth = e.data.width;
+        tileHeight = e.data.height;
+        incX = [0, 0, 1 / size, 1 / size];
+        incY = [0, 1 / size, 1 / size, 0];
+        indexes = e.data.index;
+    }
     var n = e.data;
     for (var i = 0; i < n.length; i++) {
         n[i].built = false;
@@ -69,11 +79,14 @@ function build(chunk) {
     var uvs = new DynamicArray(Float32Array, r * 3 * 2);
     var j = 0;
     var f = {
+        index: function (n) {
+            return indexes[n];
+        },
         uvx: function(index, vertex) {
-            return index % textureWidth / textureWidth - incX[vertex] + 1 / textureWidth;
+            return index % size / size - incX[vertex] + 1 / size;
         },
         uvy: function(index, vertex) {
-            return 1 - (Math.floor((index - index % textureWidth) / textureWidth) / textureHeight - incY[vertex] + 1 / textureHeight);
+            return 1 - (Math.floor((index - index % size) / size) / size - incY[vertex] + 1 / size);
         },
         vertex: function(x, y, z, r, g, b, uvx, uvy) {
             positions.push(x);
@@ -94,7 +107,8 @@ function build(chunk) {
             indices.push(c);
             indices.push(d);
         },
-        squad: function (i, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) {
+        squad: function (n, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) {
+            var i = f.index(n);
             var ac = s1 / 12 + 0.2;
             var a = f.vertex(x1, y1, z1, ac, ac, ac, f.uvx(i, 0), f.uvy(i, 0));
             var bc = s2 / 12 + 0.2;

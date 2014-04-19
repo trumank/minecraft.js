@@ -2,7 +2,7 @@
     obj.models = {
         cube: function (block, metdata, x, y, z, f) {
             var faces = block.faces;
-            var i, c, a, b, c, d;
+            var c, a, b, c, d;
             if (!f.isBlockOpaque(x + 1, y, z)) {
                 a = (f.getBlockLight(x + 1, y,     z    ) +
                      f.getBlockLight(x + 1, y - 1, z    ) +
@@ -148,7 +148,7 @@
             }, metadata, x, y, z, f);
         },
         sprite: function (block, metadata, x, y, z, f) {
-            var i = block.faces;
+            var i = f.index(block.faces);
             var d = Math.sqrt(1/8);
             var mx = x + 0.5;
             var mz = z + 0.5;
@@ -171,7 +171,7 @@
                 f.vertex(mx + d, y, mz - d, c, c, c, f.uvx(i, 0), f.uvy(i, 0)));
         },
         liquid: function (block, metadata, x, y, z, f) {
-            var i = block.faces;
+            var i = f.index(block.faces);
             var i, c;
             if (!f.isBlockOpaque(x + 1, y, z) && f.getBlock(x + 1, y, z) !== block.id) {
                 c = f.getBlockLight(x + 1, y, z) / 12 + 0.2;
@@ -220,220 +220,283 @@
     obj.blocks = {
         1: {
             name: 'stone',
-            faces: 1
+            faces: 'stone'
         },
         2: {
             name: 'grass',
-            faces: [3, 3, 0, 2, 3, 3]
+            faces: ['grass_side', 'grass_side', 'grass_top', 'dirt', 'grass_side', 'grass_side']
         },
         3: {
             name: 'dirt',
-            faces: 2
+            faces: [
+                ['dirt', 'dirt', 'dirt', 'dirt', 'dirt', 'dirt'],
+                ['dirt', 'dirt', 'dirt', 'dirt', 'dirt', 'dirt'],
+                ['dirt', 'dirt', 'dirt_podzol_top', 'dirt_podzol_side', 'dirt', 'dirt']
+            ],
+            model: function (block, metadata, x, y, z, f) {
+                obj.models.cube({
+                    faces: block.faces[metadata]
+                }, metadata, x, y, z, f);
+            }
         },
         4: {
             name: 'cobblestone',
-            faces: 16
+            faces: 'cobblestone'
         },
         5: {
             name: 'plank',
-            faces: 4
+            faces: [
+                'planks_oak',
+                'planks_spruce',
+                'planks_birch',
+                'planks_jungle',
+                'planks_acacia',
+                'planks_big_oak'
+            ],
+            model: function (block, metadata, x, y, z, f) {
+                var face = block.faces[metadata];
+                obj.models.cube({
+                    faces: [face, face, face, face, face, face]
+                }, metadata, x, y, z, f);
+            }
         },
         6: {
             name: 'sapling',
-            faces: 15,
-            solid: false
+            faces: [
+                'sapling_oak',
+                'sapling_spruce',
+                'sapling_birch',
+                'sapling_jungle',
+                'sapling_acacia',
+                'sapling_big_oak'
+            ],
+            solid: false,
+            model: function (block, metadata, x, y, z, f) {
+                obj.models.sprite({
+                    faces: block.faces[metadata]
+                }, metadata, x, y, z, f);
+            }
         },
         7: {
             name: 'bedrock',
-            faces: 17
+            faces: 'bedrock'
         },
         8: {
             name: 'water',
-            faces: 223,
+            faces: 'water_still', // TODO
             solid: false,
             model: obj.models.liquid
         },
         9: {
             name: 'water',
-            faces: 223,
+            faces: 'water_still', // TODO
             solid: false,
             model: obj.models.liquid
         },
         10: {
             name: 'lava',
-            faces: 255,
+            faces: 'lava_still', // TODO
             solid: false,
             model: obj.models.liquid
         },
         11: {
             name: 'lava',
-            faces: 255,
+            faces: 'lava_still', // TODO
             solid: false,
             model: obj.models.liquid
         },
         12: {
             name: 'sand',
-            faces: 18
+            faces: ['sand', 'red_sand'],
+            model: function (block, metadata, x, y, z, f) {
+                var face = block.faces[metadata];
+                obj.models.cube({
+                    faces: [face, face, face, face, face, face]
+                }, metadata, x, y, z, f);
+            }
         },
         13: {
             name: 'gravel',
-            faces: 19
+            faces: 'gravel'
         },
         14: {
             name: 'gold ore',
-            faces: 32
+            faces: 'gold_ore'
         },
         15: {
             name: 'iron ore',
-            faces: 33
+            faces: 'iron_ore'
         },
         16: {
             name: 'coal ore',
-            faces: 34
+            faces: 'coal_ore'
         },
         17: {
             name: 'wood',
-            faces: [20, 20, 21, 21, 20, 20]
+            faces: ['log_oak', 'log_oak', 'log_oak_top', 'log_oak_top', 'log_oak', 'log_oak'] // TODO
         },
         18: {
             name: 'leaves',
-            faces: [53, 133, 53, 197],
+            faces: ['leaves_oak', 'leaves_spruce', 'leaves_birch', 'leaves_jungle'],
             model: obj.models.typed
         },
         19: {
             name: 'sponge',
-            faces: 48
+            faces: 'sponge'
         },
         20: {
             name: 'glass',
-            faces: 49,
+            faces: 'glass',
             transparent: true
         },
         21: {
             name: 'lapis ore',
-            faces: 160
+            faces: 'lapis_ore'
         },
         22: {
             name: 'lapis block',
-            faces: 144
+            faces: 'lapis_block'
         },
         23: {
             name: 'dispenser',
-            faces: 46
+            faces: 'dispenser_front_horizontal' // TODO
         },
         24: {
             name: 'sand stone',
-            faces: [192, 192, 176, 208, 192, 192]
+            faces: ['sandstone_normal', 'sandstone_normal', 'sandstone_bottom', 'sandstone_top', 'sandstone_normal', 'sandstone_normal'] // TODO
         },
         25: {
             name: 'note block',
-            faces: [74, 74, 75, 74, 74, 74]
+            faces: 'noteblock'
         },
         // ...
         30: {
             name: 'web',
-            faces: 11,
+            faces: 'web',
             solid: false,
             model: obj.models.sprite
         },
         31: {
             name: 'tall grass',
-            faces: 39,
+            faces: 'tallgrass',
             solid: false,
             model: obj.models.sprite
         },
         32: {
             name: 'dead bush',
-            faces: 55,
+            faces: 'deadbush',
             solid: false,
             model: obj.models.sprite
         },
         // ...
         35: {
             name: 'wool',
-            faces: [64, 210, 194, 178, 162, 146, 130, 114, 225, 209, 193, 177, 161, 145, 129, 113]
+            faces: [
+                'wool_colored_white',
+                'wool_colored_orange',
+                'wool_colored_magenta',
+                'wool_colored_light_blue',
+                'wool_colored_yellow',
+                'wool_colored_lime',
+                'wool_colored_pink',
+                'wool_colored_gray',
+                'wool_colored_silver',
+                'wool_colored_cyan',
+                'wool_colored_purple',
+                'wool_colored_blue',
+                'wool_colored_brown',
+                'wool_colored_green',
+                'wool_colored_red',
+                'wool_colored_black'
+            ],
+            model: function (block, metadata, x, y, z, f) {
+                var face = block.faces[metadata];
+                obj.models.cube({
+                    faces: [face, face, face, face, face, face]
+                }, metadata, x, y, z, f);
+            }
         },
         // ...
         37: {
             name: 'dandelion',
-            faces: 13,
+            faces: 'flower_dandelion',
             solid: false,
             model: obj.models.sprite
         },
         38: {
             name: 'rose',
-            faces: 12,
+            faces: 'flower_rose',
             solid: false,
             model: obj.models.sprite
         },
         39: {
             name: 'brown mushroom',
-            faces: 29,
+            faces: 'mushroom_block_skin_brown', // TODO
             solid: false,
             model: obj.models.sprite
         },
         40: {
             name: 'red mushroom',
-            faces: 28,
+            faces: 'mushroom_block_skin_red', // TODO
             solid: false,
             model: obj.models.sprite
         },
         41: {
             name: 'gold block',
-            faces: 23
+            faces: 'gold_block'
         },
         42: {
             name: 'iron block',
-            faces: 22
+            faces: 'iron_block'
         },
         // ...
         45: {
             name: 'brick',
-            faces: 7
+            faces: 'brick'
         },
         46: {
             name: 'tnt',
-            faces: 8
+            faces: ['tnt_side', 'tnt_side', 'tnt_bottom', 'tnt_top', 'tnt_side', 'tnt_side']
         },
         47: {
             name: 'book shelf',
-            faces: [35, 35, 4, 4, 35, 35]
+            faces: ['bookshelf', 'bookshelf', 'planks_oak', 'planks_oak', 'bookshelf', 'bookshelf']
         },
         48: {
             name: 'mossy cobblestone',
-            faces: 36
+            faces: 'cobblestone_mossy'
         },
         49: {
             name: 'obsidian',
-            faces: 37
+            faces: 'obsidian'
         },
         50: {
             name: 'torch',
-            faces: 80,
+            faces: 'torch_on', // TODO
             solid: false
         },
         51: {
             name: 'fire',
-            faces: 31,
+            faces: 'fire_layer_0', // TODO
             solid: false
         },
         52: {
             name: 'spawner',
-            faces: 65,
+            faces: 'mob_spawner',
             transparent: true
         },
         // ...
         56: {
             name: 'diamond ore',
-            faces: 50
+            faces: 'diamond_ore'
         },
         57: {
             name: 'diamond block',
-            faces: 24
+            faces: 'diamond_block'
         },
         58: {
             name: 'crafting table',
-            faces: [59, 59, 43, 4, 60, 60]
+            faces: ['crafting_table_front', 'crafting_table_side', 'crafting_table_top', 'plank_oak', 'crafting_table_front', 'crafting_table_side']
         },
         // ...
         60: {
@@ -458,9 +521,14 @@
             faces: 51
         },
         // ...
+        95: {
+            name: 'clay',
+            faces: 'clay'
+        },
+        // ...
         98: {
             name: 'stone brick',
-            faces: 54
+            faces: 'stonebrick' // TODO
         }
     };
 
@@ -474,13 +542,13 @@
         }
         if (block.model === obj.models.cube) {
             f = block.faces;
-            if (typeof f === 'number') {
+            if (!Array.isArray(f)) {
                 block.faces = [f, f, f, f, f, f];
             }
         } else if (block.model === obj.models.typed) {
             for (var i = 0; i < block.faces.length; i++) {
                 f = block.faces[i];
-                if (typeof f === 'number') {
+                if (!Array.isArray(f)) {
                     block.faces[i] = [f, f, f, f, f, f];
                 }
             }

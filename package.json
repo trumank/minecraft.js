@@ -1,0 +1,25 @@
+{
+  "name": "mc.js",
+  "version": "0.0.0-1",
+  "description": "JS Minecraft client",
+  "main": "server.js",
+  "dependencies": {
+    "socket.io": "~0.9.16",
+    "express": "~3.4.8",
+    "minecraft-protocol": "~0.11.6",
+    "ws": "~0.4.27"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": "",
+  "author": "Truman Kilen",
+  "license": "MIT",
+  "gitHead": "fdfca496beaed9a24c26b8bca3383eca40beb84c",
+  "readmeFilename": "README.md",
+  "subdomain": "mcjs",
+  "engines": {
+    "node": "0.10.x"
+  }
+}

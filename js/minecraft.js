@@ -9,83 +9,149 @@
 
     var mod = function (n1, n2) {
         return ((n1 % n2) + n2) % n2;
-    }
-
-    mc.textures = {
-        terrain: THREE.ImageUtils.loadTexture('img/32x32 terrain.png')
-    };
-    mc.textures.terrain.magFilter = THREE.NearestFilter;
-    mc.textures.terrain.minFilter = THREE.NearestFilter;
-    mc.shaders.terrain.map = mc.textures.terrain;
-    mc.materials = {
-        terrain: mc.shaders.terrain
     };
 
-    mc.Minecraft = function (container, width, height) {
-        this.element = document.createElement('div');
-        this.element.setAttribute('id', 'content');
-        this.element.setAttribute('tabindex', '0');
-
-        var cursor = document.createElement('div');
-        cursor.setAttribute('id', 'cursor');
-        this.element.appendChild(cursor);
-
-        this.renderer = new THREE.WebGLRenderer();
-        this.renderer.setSize(width, height);
-        this.renderer.setClearColor(0x101010); // sky: :0xbfd1e5
-
-        this.canvas = this.renderer.domElement;
-        this.element.appendChild(this.canvas);
-
-        var keysDown = this.keysDown = [];
-        var mouseMovement = this.mouseMovement = new THREE.Vector2(0, 0);
-
-        for (var i = 0; i < 255; i++) {
-            this.keysDown[i] = false;
-        }
-
+    mc.Minecraft = function (container, server) {
+        this.container = container;
         var self = this;
-
-        this.element.addEventListener('click', function (e) {
-            self.element.webkitRequestPointerLock();
+        this.buildDom();
+        this.loadResources(function (err) {
+            if (!err) {
+                self.signIn(function (err, session) {
+                    self.buildUI();
+                    self.joinServer(server.host, server.port);
+                    console.log(session);
+                });
+            }
         });
-        this.element.addEventListener('keydown', function (e) {
-            keysDown[e.keyCode] = true;
-        }, false);
-
-        this.element.addEventListener('keyup', function (e) {
-            keysDown[e.keyCode] = false;
-        }, false);
-
-        this.element.addEventListener('mousemove', function (e) {
-            mouseMovement.x = e.webkitMovementX;
-            mouseMovement.y = e.webkitMovementY;
-        }, false);
-
-        this.scene = new THREE.Scene();
-
-        this.scene.add(new THREE.AmbientLight(0xffd880));
-
-        this.world = new mc.World(this, region);
-        this.camera = new THREE.PerspectiveCamera(120, width / height, 0.001, 20000);
-        this.selector = cube = new THREE.Mesh(new THREE.CubeGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
-            color: 0x00ee00,
-            wireframe: true,
-            wireframeLinewidth: 2,
-            transparent: true
-        }));
-        this.scene.add(this.selector);
-        this.player = new mc.Player(this.world, 'Player', this.camera, this.selector);
-        this.player.position.set(318, 89, 143);
-
-        container.appendChild(this.element);
-        this.stats = new Stats();
-        this.stats.domElement.style.position = 'absolute';
-        this.stats.domElement.style.top = '0px';
-        container.appendChild(this.stats.domElement);
-        this.render();
+        this.server = io.connect('/');
+        this.server.on(['login', 0x03], function (data) {
+            this.sendSettings();
+        }.bind(this));
+        this.server.on(['play', 0x02], function (data) {
+            document.querySelector('.chat').innerText += data.message + '\n';
+        });
     };
     extend(mc.Minecraft.prototype, {
+        buildDom: function () {
+            //this.container.querySelector('.overlay .auth').style.display = 'none';
+        },
+        loadResources: function (cb) {
+            this.resources = new mc.ResourcePack('/resourcepack.zip');
+            var loading = this.container.querySelector('.overlay .loading');
+            var bar = this.container.querySelector('.overlay .loading .bar');
+            var l = 0;
+            var i = setInterval(function () {
+                bar.style.width = l;
+            }, 1000);
+            this.resources.load(function (p) {
+                l = p * 100 + '%';
+            }, function (err) {
+                if (!err) {
+                    loading.style.display = 'none';
+                }
+                clearInterval(i);
+                cb(err);
+            });
+        },
+        signIn: function (cb) {
+            var overlay = this.container.querySelector('.overlay');
+            var auth = this.container.querySelector('.overlay .auth');
+            var button = this.container.querySelector('.overlay .auth button');
+            var username = this.container.querySelector('.overlay .auth .username');
+            var password = this.container.querySelector('.overlay .auth .password');
+            auth.style.display = 'block';
+            username.focus();
+            var self = this;
+            function click() {
+                self.server.emit('auth', {
+                    username: username.value,
+                    password: password.value
+                });
+            }
+            this.server.once('auth', function (data) {
+                button.removeEventListener('click', click);
+                overlay.style.display = 'none';
+                cb(null, data);
+                console.log(arguments);
+            });
+            button.addEventListener('click', click);
+        },
+        joinServer: function (host, port) {
+            this.server.emit('connect', {
+                host: host,
+                port: port,
+                username: 'Bot'
+            });
+        },
+        buildUI: function () {
+            this.element = this.container.getElementsByClassName('content')[0];
+
+            this.canvas = this.element.getElementsByTagName('canvas')[0];
+            this.renderer = new THREE.WebGLRenderer({
+                canvas: this.canvas
+            });
+            this.renderer.setClearColor(0x101010); // sky: :0xbfd1e5
+
+            var keysDown = this.keysDown = [];
+            var mouseMovement = this.mouseMovement = new THREE.Vector2(0, 0);
+
+            for (var i = 0; i < 255; i++) {
+                this.keysDown[i] = false;
+            }
+
+            var self = this;
+
+            this.element.addEventListener('click', function (e) {
+                self.element.webkitRequestPointerLock();
+            });
+            this.element.addEventListener('keydown', function (e) {
+                keysDown[e.keyCode] = true;
+            }, false);
+
+            this.element.addEventListener('keyup', function (e) {
+                keysDown[e.keyCode] = false;
+            }, false);
+
+            this.element.addEventListener('mousemove', function (e) {
+                mouseMovement.x = e.webkitMovementX;
+                mouseMovement.y = e.webkitMovementY;
+            }, false);
+
+            this.scene = new THREE.Scene();
+
+            this.scene.add(new THREE.AmbientLight(0xffd880));
+
+            var loader = new mc.ServerChunkLoader(this.server);
+            this.world = loader.world = new mc.World(this, loader);
+
+            this.camera = new THREE.PerspectiveCamera(120, 1, 0.001, 20000);
+            this.selector = cube = new THREE.Mesh(new THREE.CubeGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
+                color: 0x00ee00,
+                wireframe: true,
+                wireframeLinewidth: 2,
+                transparent: true
+            }));
+            this.scene.add(this.selector);
+            this.player = new mc.Player(this.world, 'Player', this.camera, this.selector);
+
+
+            var update = function () {
+                this.canvas.width = this.container.clientWidth;
+                this.canvas.height = this.container.clientHeight;
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera.updateProjectionMatrix();
+            }.bind(this);
+            update();
+            window.addEventListener('resize', update);
+            this.container.appendChild(this.element);
+            this.stats = new Stats();
+            this.stats.domElement.style.position = 'absolute';
+            this.stats.domElement.style.top = '0px';
+            this.container.appendChild(this.stats.domElement);
+            this.render();
+        },
         render: function () {
             var render;
             render = (function () {
@@ -102,6 +168,24 @@
             this.mouseMovement.x = 0;
             this.mouseMovement.y = 0;
             this.world.tick();
+        },
+        sendSettings: function () {
+            this.server.emit(0x15, {
+                id: '0x15',
+                locale: 'en_US',
+                viewDistance: 6,
+                chatFlags: 0,
+                chatColors: true,
+                difficulty: 3,
+                showCape: true 
+            });
+            this.server.emit(0x17, {
+                channel: 'MC|Brand',
+                data: 'vanilla'.split('').map(function(s){return s.charCodeAt(0)})
+            });
+            this.server.emit(0x09, {
+                slotId: 2
+            });
         }
     });
 
@@ -117,6 +201,9 @@
         this.lat = this.lon = 0;
         this.facing = new THREE.Vector3(1, 0, 0);
         this.heldItem = 1;
+
+        this.spawned = false;
+        this.flying = true;
 
         this.world.mc.element.addEventListener('keypress', function (e) {
             switch (String.fromCharCode(e.keyCode)) {
@@ -141,9 +228,21 @@
                 this.placeBlock();
             }
         }.bind(this));
+
+        this.world.mc.server.on(['play', 0x08], function (data) {
+            this.spawned = true;
+            this.position.x = data.x;
+            this.position.y = data.y;
+            this.position.z = data.z;
+            this.lon = data.yaw + 90;
+            this.lat = -data.pitch;
+        }.bind(this));
     };
     extend(mc.Player.prototype, {
         tick: function () {
+            if (!this.spawned) {
+                return;
+            }
             var lookSpeed = 0.5;
 
             this.lon += this.world.mc.mouseMovement.x * lookSpeed;
@@ -204,6 +303,8 @@
                 this.correctCollision();
             }
 
+            this.sendUpdate();
+
             var chunks = this.world.chunks;
             var cx = this.position.x >> 4;
             var cy = this.position.y >> 4;
@@ -229,6 +330,7 @@
             this.updateSelection();
         },
         correctCollision: function () {
+            this.onGround = false;
             var oldbb = this.getBoundingBox().translate(this.velocity.clone().negate());
             var newbb = this.getBoundingBox(),
                 bb = oldbb.clone().union(newbb),
@@ -250,7 +352,7 @@
 
             var dir;
             var playerFace;
-            var axes = [['x', 'y', 'z', 0.2, -0.2], ['y', 'x', 'z', 1.5, -0.3], ['z', 'x', 'y', 0.2, -0.2]];
+            var axes = [['x', 'y', 'z', 0.3, -0.3], ['y', 'x', 'z', 1.62, -0.3], ['z', 'x', 'y', 0.3, -0.3]];
             while (true) {
                 var min = {
                     axis: -1,
@@ -306,7 +408,7 @@
         },
         getBoundingBox: function () {
             var p = this.position;
-            return new THREE.Box3(new THREE.Vector3(p.x - 0.2, p.y - 1.5, p.z - 0.2), new THREE.Vector3(p.x + 0.2, p.y + 0.3, p.z + 0.2));
+            return new THREE.Box3(new THREE.Vector3(p.x - 0.3, p.y - 1.62, p.z - 0.3), new THREE.Vector3(p.x + 0.3, p.y + 0.3, p.z + 0.3));
         },
         updateSelection: function () {
             var r = 5;
@@ -436,24 +538,24 @@
                 var p = this.selected.clone().add(this.selectedFace);
                 this.world.setBlock(p.x, p.y, p.z, this.heldItem);
             }
+        },
+        sendUpdate: function () {
+            this.world.mc.server.emit(0x06, {
+                x: this.position.x,
+                y: this.position.y,
+                z: this.position.z,
+                yaw: this.lon - 90,
+                pitch: -this.lat,
+                onGround: this.onGround,
+                stance: this.position.y - 1.62
+            });
         }
     });
 
-    mc.Server = function (address) {
-        this.address = address;
-        this.socket = new WebSocket(address);
-        this.socket.onmessage = this.onmessage;
-    };
-    extend(mc.Server.prototype, {
-        onmessage: function (data) {
-            console.log(data);
-        }
-    })
-
-    mc.World = function (inst, data) {
+    mc.World = function (inst, loader) {
         this.mc = inst;
         this.chunks = {};
-        this.chunkLoader = new mc.AnvilChunkLoader(data);
+        this.chunkLoader = loader;
         this.queuedChunks = [];
         this.worker = new Worker('js/worker.js');
         var self = this;
@@ -471,6 +573,7 @@
                 }
             }
         };
+        this.mc.resources.configure(this.worker);
     };
     mc.CHUNK_SIZE = 16;
     extend(mc.World.prototype, {
@@ -478,8 +581,10 @@
             this.buildQueuedChunks();
         },
         loadChunk: function (x, y, z) {
-            var chunk = new mc.Chunk(this, x, y, z, this.chunkLoader.load(x, y, z));
-            this.setChunk(x, y, z, chunk);
+            var data = this.chunkLoader.load(x, y, z);
+            if (data) {
+                this.setChunk(x, y, z, new mc.Chunk(this, x, y, z, data));
+            }
         },
         unloadChunk: function (x, y, z) {
             var mesh = this.getChunk(x, y, z).mesh;
@@ -572,13 +677,22 @@
             return chunks;
         },
 
-        setBlock: function (x, y, z, id) {
+        setBlock: function (x, y, z, id, meta) {
             var mx = mod(x, mc.CHUNK_SIZE);
             var my = mod(y, mc.CHUNK_SIZE);
             var mz = mod(z, mc.CHUNK_SIZE);
             var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
             if (chunk) {
-                chunk.setBlock(mx, my, mz, id);
+                chunk.setBlock(mx, my, mz, id, meta);
+            }
+        },
+        setMeta: function (x, y, z, id) {
+            var mx = mod(x, mc.CHUNK_SIZE);
+            var my = mod(y, mc.CHUNK_SIZE);
+            var mz = mod(z, mc.CHUNK_SIZE);
+            var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
+            if (chunk) {
+                chunk.setMeta(mx, my, mz, id);
             }
         },
         getBlock: function (x, y, z) {
@@ -588,6 +702,14 @@
             var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
             return chunk ? chunk.getBlock(mx, my, mz) : 0;
         },
+        getMeta: function (x, y, z) {
+            var mx = mod(x, mc.CHUNK_SIZE);
+            var my = mod(y, mc.CHUNK_SIZE);
+            var mz = mod(z, mc.CHUNK_SIZE);
+            var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
+            return chunk ? chunk.getMeta(mx, my, mz) : 0;
+        },
+
         getAABBs: function (x, y, z) {
             var id = this.getBlock(x, y, z)
             if (!id) {
@@ -617,6 +739,61 @@
         }
     });
     
+    mc.ServerChunkLoader = function (server) {
+        this.chunks = {};
+        this.server = server;
+        var self = this;
+        this.server.on(['play', 0x23], function (data) {
+            self.world.setBlock(data.x, data.y, data.z, data.type, data.metadata);
+        });
+        this.server.on(['play', 0x26], function (data) {
+            var stream = new Streams.ReadStream(new Zlib.Inflate(new Uint8Array(data.data.compressedChunkData)).decompress().buffer);
+            var l = mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE;
+            data.data.meta.forEach(function (d) {
+                var chunks = {};
+                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                    if (d.bitMap & (1 << y)) {
+                        chunks[y] = {};
+                    }
+                }
+                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                    if (d.bitMap & (1 << y)) {
+                        chunks[y].blocks = new Uint8Array(stream.arrayBuffer(l));
+                    }
+                }
+                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                    if (d.bitMap & (1 << y)) {
+                        chunks[y].metadata = new Uint8Array(stream.arrayBuffer(l / 2));
+                    }
+                }
+                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                    if (d.bitMap & (1 << y)) {
+                        chunks[y].blockLight = new Uint8Array(stream.arrayBuffer(l / 2));
+                    }
+                }
+                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                    if (d.bitMap & (1 << y)) {
+                        chunks[y].skyLight = new Uint8Array(stream.arrayBuffer(l / 2));
+                    }
+                }
+                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                    if (d.bitMap & (1 << y)) {
+                        self.chunks[d.x + '_' + y + '_' + d.z] = chunks[y];
+                    }
+                }
+                stream.arrayBuffer(mc.CHUNK_SIZE * mc.CHUNK_SIZE);
+            });
+        });
+    };
+
+    extend(mc.ServerChunkLoader.prototype, {
+        COLUMN_HEIGHT: 16,
+        load: function (x, y, z) {
+            var l = mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE;
+            return this.chunks[x + '_' + y + '_' + z];
+        }
+    });
+
     mc.AnvilChunkLoader = function (data) {
         this.data = data;
         this.stream = new Streams.ReadStream(data);
@@ -676,14 +853,14 @@
         this.metadata = data.metadata;
         this.blockLight = data.blockLight;
         this.skyLight = data.skyLight;
-        this.transBlocks = new Uint8Array(data.blocks.length);
+        this.transBlocks = new Uint8Array(this.blocks.length);
         this.transBlocks.set(this.blocks);
-        this.transMetadata = new Uint8Array(data.metadata.length);
+        this.transMetadata = new Uint8Array(this.metadata.length);
         this.transMetadata.set(this.metadata);
-        this.transBlockLight = new Uint8Array(data.blockLight.length);
-        this.transBlockLight.set(this.metadata);
-        this.transSkyLight = new Uint8Array(data.skyLight.length);
-        this.transSkyLight.set(this.metadata);
+        this.transBlockLight = new Uint8Array(this.blockLight.length);
+        this.transBlockLight.set(this.blockLight);
+        this.transSkyLight = new Uint8Array(this.skyLight.length);
+        this.transSkyLight.set(this.skyLight);
         this.buildMesh();
         var s = this.world.getSurroundingChunks(this.x, this.y, this.z);
         for (var i = 0; i < s.length; i++) {
@@ -691,49 +868,60 @@
         }
     }
     extend(mc.Chunk.prototype, {
-        setBlock: function (x, y, z, id) {
+        update: function (x, y, z) {
+            var c;
+            if (x === 0 && c = this.world.getChunk(this.x - 1, this.y, this.z))
+                c.buildMesh();
+            if (x === mc.CHUNK_SIZE - 1 && c = this.world.getChunk(this.x + 1, this.y, this.z))
+                c.buildMesh();
+            if (y === 0 && c = this.world.getChunk(this.x, this.y - 1, this.z))
+                c.buildMesh();
+            if (y === mc.CHUNK_SIZE - 1 && c = this.world.getChunk(this.x, this.y + 1, this.z))
+                c.buildMesh();
+            if (z === 0 && c = this.world.getChunk(this.x, this.y, this.z - 1))
+                c.buildMesh();
+            if (z === mc.CHUNK_SIZE - 1 && c = this.world.getChunk(this.x, this.y, this.z + 1))
+                c.buildMesh();
+        },
+        setBlock: function (x, y, z, id, meta) {
             var index = x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE;
             this.blocks[index] = id;
+            if (arguments.length > 4) this.metadata[index] = meta;
             if (this.isBuilding()) {
                 if (!this.diff) {
                     this.diff = Object.create(null);
                 }
-                this.diff[index] = id;
+                this.diff[index] = id; // TODO
             } else {
                 this.transBlocks[index] = id;
+                if (arguments.length > 4) this.transMetadata[index] = meta;
             }
             this.buildMesh();
-            var c;
-            if (x === 0) {
-                c = this.world.getChunk(this.x - 1, this.y, this.z);
-                if (c) c.buildMesh();
+        },
+        setMeta: function (x, y, z, meta) {
+            var index = x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE;
+            this.metadata[index] = meta;
+            if (this.isBuilding()) {
+                /*if (!this.diff) {
+                    this.diff = Object.create(null);
+                }
+                this.diff[index] = id; // TODO*/
+            } else {
+                this.transMetadata[index] = meta;
             }
-            if (x === mc.CHUNK_SIZE - 1) {
-                c = this.world.getChunk(this.x + 1, this.y, this.z);
-                if (c) c.buildMesh();
-            }
-            if (y === 0) {
-                c = this.world.getChunk(this.x, this.y - 1, this.z);
-                if (c) c.buildMesh();
-            }
-            if (y === mc.CHUNK_SIZE - 1) {
-                c = this.world.getChunk(this.x, this.y + 1, this.z);
-                if (c) c.buildMesh();
-            }
-            if (z === 0) {
-                c = this.world.getChunk(this.x, this.y, this.z - 1);
-                if (c) c.buildMesh();
-            }
-            if (z === mc.CHUNK_SIZE - 1) {
-                c = this.world.getChunk(this.x, this.y, this.z + 1);
-                if (c) c.buildMesh();
-            }
+            this.buildMesh();
         },
         getBlock: function (x, y, z) {
             if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.CHUNK_SIZE || z < 0 || z >= mc.CHUNK_SIZE) {
                 return -1;
             }
             return this.blocks[x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE];
+        },
+        getMeta: function (x, y, z) {
+            if (x < 0 || x >= mc.CHUNK_SIZE || y < 0 || y > mc.CHUNK_SIZE || z < 0 || z >= mc.CHUNK_SIZE) {
+                return -1;
+            }
+            return this.metadata[x + z * mc.CHUNK_SIZE + y * mc.CHUNK_SIZE * mc.CHUNK_SIZE];
         },
         
         isBlockSolid: function (x, y, z) {
@@ -770,7 +958,7 @@
                 index: 0
             }];
             geometry.computeVertexNormals();
-            var mesh = new THREE.Mesh(geometry, mc.materials.terrain);
+            var mesh = new THREE.Mesh(geometry, this.world.mc.resources.materials.terrain);
 
             this.oldMesh = this.mesh;
             this.dirty = false;
@@ -787,6 +975,13 @@
                 this.buildMesh();
             }
         }
+    });
+
+    mc.HUD = function (container) {
+
+    };
+    extend(mc.HUD.prototype, {
+
     });
     
     mc.nbt = {
@@ -862,5 +1057,102 @@
             }    
         }
     };
+
+    mc.ResourcePack = function (path) {
+        this.path = path;
+        this.assets = {};
+        this.terrain = null;
+        this.terrainIndex = null;
+        this.textures = {};
+        this.materials = {};
+    };
+    extend(mc.ResourcePack.prototype, {
+        createResouces: function () {
+            var terrain = new THREE.Texture(this.terrain);
+            terrain.needsUpdate = true;
+            terrain.magFilter = THREE.NearestFilter;
+            terrain.minFilter = THREE.NearestFilter;
+            this.textures.terrain = terrain;
+            mc.shaders.terrain.map = this.textures.terrain;
+            this.materials.terrain = mc.shaders.terrain;
+        },
+        load: function (progress, cb) {
+            var self = this;
+            this.loadAssets(progress, function (err) {
+                if (err) return cb(err);
+                self.buildTerrain();
+                self.createResouces();
+                cb();
+            });
+        },
+        loadAssets: function (progress, cb) {
+            var self = this;
+            zip.createReader(new zip.HttpReader(this.path), function (reader) {
+                reader.getEntries(function (entries) {
+                    var images = entries.filter(function (entry) {
+                        return /\.png$/.test(entry.filename);
+                    });
+                    window.es = images;
+                    var i = 0;
+                    async.eachLimit(images, 10, function (entry, cb) {
+                        if (/\.png$/.test(entry.filename)) {
+                            entry.getData(new zip.BlobWriter('image/png'), function (blob) {
+                                var img = new Image();
+                                self.assets[entry.filename.replace(/\..*$/, '').replace(/\//g, '.')] = img;
+                                img.onload = function() {
+                                    progress(++i / images.length);
+                                    setTimeout(cb, 0);
+                                };
+                                img.src = URL.createObjectURL(blob);
+                            });
+                        } else {
+                            cb();
+                        }
+                    }, cb);
+                }, cb);
+            }, cb);
+        },
+        buildTerrain: function () {
+            var self = this;
+            var blocks = Object.keys(this.assets).filter(function (n) {
+                return /^assets\.minecraft\.textures\.blocks\./.test(n);
+            }).map(function (n) {
+                return {
+                    name: n.match(/^assets\.minecraft\.textures\.blocks\.(.*)/)[1],
+                    asset: self.assets[n]
+                };
+            });
+            var s = 1;
+            while (s*s < blocks.length) {
+                s <<= 1;
+            }
+            this.terrainSize = s;
+            var tw = blocks[0].asset.width;
+            var th = blocks[0].asset.height;
+            var canvas = document.createElement('canvas');
+            this.tileWidth = tw;
+            this.tileHeight = th;
+            canvas.width = tw * s;
+            canvas.height = th * s;
+            var ctx = canvas.getContext('2d');
+            var index = {};
+            blocks.forEach(function (b, i) {
+                var x = i % s;
+                var y = i / s | 0;
+                ctx.drawImage(b.asset, x * tw, y * th, tw, th); // TODO: Fix for none-uniform assets
+                index[b.name] = i;
+            });
+            this.terrain = canvas;
+            this.terrainIndex = index;
+        },
+        configure: function (worker) {
+            worker.postMessage({
+                config: true,
+                size: this.terrainSize,
+                tileWidth: this.tileWidth,
+                tileHeight: this.tileHeight,
+                index: this.terrainIndex
+            });
+        }
+    });
 }) (mc);
- 
