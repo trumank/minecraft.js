@@ -1,6 +1,6 @@
 self.DynamicArray = function DynamicArray(type) {
     this.type = type;
-    this.chunkSize = 1;
+    this.chunkSize = 16;
     this.chunks = [];
     this.totalSize = 0;
     this.currentChunk = null;
