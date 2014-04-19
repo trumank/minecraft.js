@@ -170,7 +170,7 @@
             this.world.tick();
         },
         sendSettings: function () {
-            this.server.emit(0x15, {
+            this.server.emit(['play', 0x15], {
                 id: '0x15',
                 locale: 'en_US',
                 viewDistance: 6,
@@ -179,11 +179,11 @@
                 difficulty: 3,
                 showCape: true 
             });
-            this.server.emit(0x17, {
+            this.server.emit(['play', 0x17], {
                 channel: 'MC|Brand',
                 data: 'vanilla'.split('').map(function(s){return s.charCodeAt(0)})
             });
-            this.server.emit(0x09, {
+            this.server.emit(['play', 0x09], {
                 slotId: 2
             });
         }
@@ -540,7 +540,7 @@
             }
         },
         sendUpdate: function () {
-            this.world.mc.server.emit(0x06, {
+            this.world.mc.server.emit(['play', 0x06], {
                 x: this.position.x,
                 y: this.position.y,
                 z: this.position.z,
