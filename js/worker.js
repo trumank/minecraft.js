@@ -22,8 +22,9 @@ function mod(n1, n2) {
 }
 
 function next() {
+    var chunk;
     if (queue.length > 0) {
-        var chunk = queue.pop();
+        chunk = queue.pop();
         postMessage({
             position: chunk.position,
             attributes: build(chunk)
@@ -32,7 +33,7 @@ function next() {
     } else {
         var chunkHashes = Object.keys(chunks);
         for (var i = 0; i < chunkHashes.length; i++) {
-            var chunk = chunks[chunkHashes[i]];
+            chunk = chunks[chunkHashes[i]];
             postMessage({
                 position: chunk.position,
                 blocks: chunk.blocks,
@@ -160,7 +161,7 @@ function build(chunk) {
                 arr = c[prop];
             } else {
                 // special case for this chunk for optimization
-                arr = chunk[prop]
+                arr = chunk[prop];
             }
             var b = arr[(mod(x, chunkSize) + mod(z, chunkSize) * chunkSize + mod(y, chunkSize) * chunkSize * chunkSize) >> 1];
             return (x % 2 ? b >> 4 : b) & 0xf;

@@ -5,7 +5,7 @@ self.DynamicArray = function DynamicArray(type) {
     this.totalSize = 0;
     this.currentChunk = null;
     this.currentIndex = 0;
-}
+};
 
 DynamicArray.prototype.push = function (item) {
     if (!this.currentChunk || this.currentIndex >= this.chunkSize) {

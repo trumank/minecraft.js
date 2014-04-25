@@ -2,7 +2,7 @@
     obj.models = {
         cube: function (block, metdata, x, y, z, f) {
             var faces = block.faces;
-            var c, a, b, c, d;
+            var c, a, b, d;
             if (!f.isBlockOpaque(x + 1, y, z)) {
                 a = (f.getBlockLight(x + 1, y,     z    ) +
                      f.getBlockLight(x + 1, y - 1, z    ) +
@@ -171,8 +171,7 @@
                 f.vertex(mx + d, y, mz - d, c, c, c, f.uvx(i, 0), f.uvy(i, 0)));
         },
         liquid: function (block, metadata, x, y, z, f) {
-            var i = f.index(block.faces);
-            var i, c;
+            var c, i = f.index(block.faces);
             if (!f.isBlockOpaque(x + 1, y, z) && f.getBlock(x + 1, y, z) !== block.id) {
                 c = f.getBlockLight(x + 1, y, z) / 12 + 0.2;
                 f.quad(f.vertex(x + 1, y, z, c, c, c, f.uvx(i, 0), f.uvy(i, 0)),
