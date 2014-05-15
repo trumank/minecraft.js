@@ -1,4 +1,5 @@
 (function (mc) {
+    'use strict';
     var extend = function (base, ex) {
         for (var key in ex) {
             if (ex.hasOwnProperty(key)) {
@@ -20,7 +21,6 @@
                 self.signIn(function (err, session) {
                     self.buildUI();
                     self.joinServer(server.host, server.port);
-                    console.log(session);
                 });
             }
         });
@@ -73,7 +73,6 @@
                 button.removeEventListener('click', click);
                 overlay.style.display = 'none';
                 cb(null, data);
-                console.log(arguments);
             });
             button.addEventListener('click', click);
         },
@@ -126,7 +125,7 @@
             this.world = loader.world = new mc.World(this, loader);
 
             this.camera = new THREE.PerspectiveCamera(120, 1, 0.001, 20000);
-            this.selector = cube = new THREE.Mesh(new THREE.CubeGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
+            this.selector = new THREE.Mesh(new THREE.CubeGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
                 color: 0x00ee00,
                 wireframe: true,
                 wireframeLinewidth: 2,
@@ -181,7 +180,7 @@
             });
             this.server.emit(['play', 0x17], {
                 channel: 'MC|Brand',
-                data: 'vanilla'.split('').map(function(s){return s.charCodeAt(0)})
+                data: 'vanilla'.split('').map(function(s){return s.charCodeAt(0);})
             });
             this.server.emit(['play', 0x09], {
                 slotId: 2
@@ -347,7 +346,7 @@
 
             function intersects(a, b) {
                 var epsilon = 0.0001;
-                return !(a.max.x <= b.min.x + epsilon || a.min.x >= b.max.x - epsilon || a.max.y <= b.min.y + epsilon || a.min.y >= b.max.y - epsilon)
+                return !(a.max.x <= b.min.x + epsilon || a.min.x >= b.max.x - epsilon || a.max.y <= b.min.y + epsilon || a.min.y >= b.max.y - epsilon);
             }
 
             var dir;
@@ -390,7 +389,7 @@
                                     axis: a,
                                     time: minT,
                                     pos: n + (this.velocity[axis[0]] < 0 ? axis[3] + 0.0001: axis[4] - 0.0001)
-                                }
+                                };
                             }
                         }
                     }
@@ -398,9 +397,9 @@
                 if (min.axis === -1) {
                     break;
                 } else {
-                    var axis = axes[min.axis];
-                    this.position[axis[0]] = min.pos;
-                    this.velocity[axis[0]] = 0;
+                    var j = axes[min.axis][0];
+                    this.position[j] = min.pos;
+                    this.velocity[j] = 0;
                     axes.splice(min.axis, 1);
                     min.axis = -1;
                 }
@@ -455,7 +454,7 @@
             var tmax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
 
             if (tmax < 0) {
-                t = tmax;
+                //t = tmax;
                 return false;
             } else if (tmin > tmax) {
                 return false;
@@ -512,10 +511,9 @@
                 return null;
             }
             t = Infinity;
-            var f;
             for (var i = 0; i < faces.length; i++) {
                 if (faces[i].t < t) {
-                    t = faces[i].t
+                    t = faces[i].t;
                     f = faces[i].f;
                 }
             }
@@ -651,7 +649,7 @@
             return this.chunks[this.chunkKey(x, y, z)];
         },
         setChunk: function (x, y, z, chunk) {
-            return this.chunks[this.chunkKey(x, y, z)] = chunk;
+            this.chunks[this.chunkKey(x, y, z)] = chunk;
         },
         getChunkContainingBlock: function (x, y, z) {
             return this.getChunk(x >> 4, y >> 4, z >> 4);
@@ -711,7 +709,7 @@
         },
 
         getAABBs: function (x, y, z) {
-            var id = this.getBlock(x, y, z)
+            var id = this.getBlock(x, y, z);
             if (!id) {
                 return [];
             }
@@ -751,32 +749,33 @@
             var l = mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE;
             data.data.meta.forEach(function (d) {
                 var chunks = {};
-                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                var y;
+                for (y = 0; y < self.COLUMN_HEIGHT; y++) {
                     if (d.bitMap & (1 << y)) {
                         chunks[y] = {};
                     }
                 }
-                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                for (y = 0; y < self.COLUMN_HEIGHT; y++) {
                     if (d.bitMap & (1 << y)) {
                         chunks[y].blocks = new Uint8Array(stream.arrayBuffer(l));
                     }
                 }
-                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                for (y = 0; y < self.COLUMN_HEIGHT; y++) {
                     if (d.bitMap & (1 << y)) {
                         chunks[y].metadata = new Uint8Array(stream.arrayBuffer(l / 2));
                     }
                 }
-                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                for (y = 0; y < self.COLUMN_HEIGHT; y++) {
                     if (d.bitMap & (1 << y)) {
                         chunks[y].blockLight = new Uint8Array(stream.arrayBuffer(l / 2));
                     }
                 }
-                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                for (y = 0; y < self.COLUMN_HEIGHT; y++) {
                     if (d.bitMap & (1 << y)) {
                         chunks[y].skyLight = new Uint8Array(stream.arrayBuffer(l / 2));
                     }
                 }
-                for (var y = 0; y < self.COLUMN_HEIGHT; y++) {
+                for (y = 0; y < self.COLUMN_HEIGHT; y++) {
                     if (d.bitMap & (1 << y)) {
                         self.chunks[d.x + '_' + y + '_' + d.z] = chunks[y];
                     }
@@ -798,7 +797,7 @@
         this.data = data;
         this.stream = new Streams.ReadStream(data);
         this.chunks = {};
-    },
+    };
     extend(mc.AnvilChunkLoader.prototype, {
         load: function (x, y, z) {
             if (this.chunks[x + '_' + y + '_' + z]) {
@@ -831,8 +830,8 @@
                     tileEntities: []
                 };
             }
-            for (var i = 0; i < level.TileEntities.length; i++) {
-                var te = level.TileEntities[i];
+            for (var j = 0; j < level.TileEntities.length; j++) {
+                var te = level.TileEntities[j];
                 this.chunks[x + '_' + Math.floor(te.y / mc.CHUNK_SIZE) + '_' + z].tileEntities.push(te);
             }
             return this.chunks[x + '_' + y + '_' + z] || (this.chunks[x + '_' + y + '_' + z] = {
@@ -842,7 +841,7 @@
                 skyLight: new Uint8Array(mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE/2),
             });
         }
-    }),
+    });
 
     mc.Chunk = function (world, x, y, z, data) {
         this.world = world;
@@ -866,21 +865,21 @@
         for (var i = 0; i < s.length; i++) {
             s[i].buildMesh();
         }
-    }
+    };
     extend(mc.Chunk.prototype, {
         update: function (x, y, z) {
             var c;
-            if (x === 0 && c = this.world.getChunk(this.x - 1, this.y, this.z))
+            if (x === 0 && (c = this.world.getChunk(this.x - 1, this.y, this.z)))
                 c.buildMesh();
-            if (x === mc.CHUNK_SIZE - 1 && c = this.world.getChunk(this.x + 1, this.y, this.z))
+            if (x === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x + 1, this.y, this.z)))
                 c.buildMesh();
-            if (y === 0 && c = this.world.getChunk(this.x, this.y - 1, this.z))
+            if (y === 0 && (c = this.world.getChunk(this.x, this.y - 1, this.z)))
                 c.buildMesh();
-            if (y === mc.CHUNK_SIZE - 1 && c = this.world.getChunk(this.x, this.y + 1, this.z))
+            if (y === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y + 1, this.z)))
                 c.buildMesh();
-            if (z === 0 && c = this.world.getChunk(this.x, this.y, this.z - 1))
+            if (z === 0 && (c = this.world.getChunk(this.x, this.y, this.z - 1)))
                 c.buildMesh();
-            if (z === mc.CHUNK_SIZE - 1 && c = this.world.getChunk(this.x, this.y, this.z + 1))
+            if (z === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y, this.z + 1)))
                 c.buildMesh();
         },
         setBlock: function (x, y, z, id, meta) {
