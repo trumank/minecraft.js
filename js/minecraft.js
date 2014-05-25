@@ -64,17 +64,25 @@
             username.focus();
             var self = this;
             function click() {
-                self.server.emit('auth', {
+                var cred = {
                     username: username.value,
                     password: password.value
-                });
+                };
+                localStorage.credentials = JSON.stringify(cred);
+                self.server.emit('auth', cred);
             }
+            button.addEventListener('click', click);
             this.server.once('auth', function (data) {
                 button.removeEventListener('click', click);
                 overlay.style.display = 'none';
                 cb(null, data);
             });
-            button.addEventListener('click', click);
+            if (localStorage.credentials) {
+                var cred = JSON.parse(localStorage.credentials);
+                username.value = cred.username;
+                password.value = cred.password;
+                click();
+            }
         },
         joinServer: function (host, port) {
             this.server.emit('connect', {
@@ -101,6 +109,21 @@
 
             var self = this;
 
+            self.isPointerLocked = false;
+            function pointerLockChange() {
+                self.isPointerLocked = self.element === (document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement);
+            }
+            document.addEventListener('pointerlockchange', pointerLockChange);
+            document.addEventListener('mozpointerlockchange', pointerLockChange);
+            document.addEventListener('webkitpointerlockchange', pointerLockChange);
+
+            function pointerLockError() {
+                self.isPointerLocked = false;
+            }
+            document.addEventListener('pointerlockerror', pointerLockError);
+            document.addEventListener('mozpointerlockerror', pointerLockError);
+            document.addEventListener('webkitpointerlockerror', pointerLockError);
+
             this.element.addEventListener('click', function (e) {
                 self.element.webkitRequestPointerLock();
             });
@@ -113,8 +136,10 @@
             }, false);
 
             this.element.addEventListener('mousemove', function (e) {
-                mouseMovement.x = e.webkitMovementX;
-                mouseMovement.y = e.webkitMovementY;
+                if (self.isPointerLocked) {
+                    mouseMovement.x = e.webkitMovementX;
+                    mouseMovement.y = e.webkitMovementY;
+                }
             }, false);
 
             this.scene = new THREE.Scene();
@@ -219,6 +244,9 @@
         }.bind(this));
 
         this.world.mc.element.addEventListener('click', function (e) {
+            if (!this.world.mc.isPointerLocked) {
+                return;
+            }
             if (e.button === 0) {
                 this.breakBlock();
             } else if (e.button === 1) {
@@ -242,7 +270,13 @@
             if (!this.spawned) {
                 return;
             }
-            var lookSpeed = 0.5;
+            var oldFov = this.camera.fov;
+            var zoomed = this.world.mc.keysDown[17];
+            this.camera.fov = zoomed ? 30 : 120; // zoom
+            if (oldFov !== this.camera.fov) {
+                this.camera.updateProjectionMatrix();
+            }
+            var lookSpeed = zoomed ? 0.05 : 0.5;
 
             this.lon += this.world.mc.mouseMovement.x * lookSpeed;
             this.lat -= this.world.mc.mouseMovement.y * lookSpeed;
@@ -252,11 +286,6 @@
             var theta = this.lon * Math.PI / 180;
             this.facing = new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta));
             this.camera.lookAt(this.position.clone().add(this.facing));
-            var oldFov = this.camera.fov;
-            this.camera.fov = this.world.mc.keysDown[17] ? 30 : 120; // zoom
-            if (oldFov !== this.camera.fov) {
-                this.camera.updateProjectionMatrix();
-            }
 
             if (this.flying) {
                 this.velocity.set(0, 0, 0);
