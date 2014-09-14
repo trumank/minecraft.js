@@ -774,9 +774,9 @@
             self.world.setBlock(data.x, data.y, data.z, data.type, data.metadata);
         });
         this.server.on(['play', 0x26], function (data) {
-            var stream = new Streams.ReadStream(new Zlib.Inflate(new Uint8Array(data.data.compressedChunkData)).decompress().buffer);
+            var stream = new Streams.ReadStream(new Zlib.Inflate(new Uint8Array(data.compressedChunkData)).decompress().buffer);
             var l = mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE;
-            data.data.meta.forEach(function (d) {
+            data.meta.forEach(function (d) {
                 var chunks = {};
                 var y;
                 for (y = 0; y < self.COLUMN_HEIGHT; y++) {
