@@ -9,13 +9,21 @@ self.DynamicArray = function DynamicArray(type) {
 
 DynamicArray.prototype.push = function (item) {
     if (!this.currentChunk || this.currentIndex >= this.chunkSize) {
-        this.chunkSize *= 2;
-        this.currentChunk = new this.type(this.chunkSize);
-        this.currentIndex = 0;
-        this.chunks.push(this.currentChunk);
+        this.expand();
     }
     this.currentChunk[this.currentIndex++] = item;
     return this.totalSize++;
+};
+
+DynamicArray.prototype.expand = function () {
+    this.chunkSize *= 2;
+    this.currentChunk = new this.type(this.chunkSize);
+    this.currentIndex = 0;
+    this.chunks.push(this.currentChunk);
+};
+
+DynamicArray.prototype.size = function () {
+    return this.totalSize;
 };
 
 DynamicArray.prototype.concat = function () {
