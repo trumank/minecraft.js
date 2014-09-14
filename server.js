@@ -40,12 +40,11 @@ require('socket.io').listen(httpServer, {log: false}).sockets.on('connection', f
 httpServer.listen(process.env.PORT || 8080);
 
 function hookServer(obj, cb) {
-    var emit = obj.emit;
-    obj.emit = function () {
-        var args = [].slice.call(arguments);
-        emit.apply(obj, args);
-        cb.apply(null, args);
-    };
+    obj.on('packet', function (packet) {
+        var id = packet.id;
+        delete packet.id;
+        cb([obj.state, id], packet);
+    });
 }
 function hookClient(obj, cb) {
     var $emit = obj.$emit;
