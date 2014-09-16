@@ -66,22 +66,25 @@ function Proxy(server, client) {
     });
     hookServer(server, function (e, data) {
         if (Array.isArray(e)) {
+            var hex = e[1].toString(16);
+            var id = e[0] + ' ' + (hex.length === 1 ? + '0' : '') + hex;
             //console.log('>>>', '0x' + e.toString(16));
             /*log.write(require('util').inspect({
                 id: '0x' + e.toString(16),
                 data: data
             }, {depth: null}) + '\n');*/
-            client.emit(e, data);
+            client.emit(id, data);
         }
     });
     hookClient(client, function (e, data) {
-        if (Array.isArray(e)) {
+        var match;
+        if (match = e.match(/^(\w+) ([0-9a-f]+)$/)) {
             //console.log('<<<', '0x' + e.toString(16));
             /*log.write(require('util').inspect({
                 id: '0x' + e.toString(16),
                 data: data
             }, {depth: null}) + '\n');*/
-            server.write(e, data);
+            server.write([match[1], parseInt(match[2], 16)], data);
         }
     });
 }

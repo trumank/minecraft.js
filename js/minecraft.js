@@ -25,11 +25,11 @@
             }
         });
         this.server = io.connect('/');
-        this.server.on(['login', 0x03], function (data) {
+        this.server.on('login 03', function (data) {
             this.sendSettings();
         }.bind(this));
-        this.server.on(['play', 0x02], function (data) {
-            document.querySelector('.chat').innerText += data.message + '\n';
+        this.server.on('play 02', function (data) {
+            document.querySelector('.chat').innerText += JSON.stringify(data) + '\n';
         });
     };
     extend(mc.Minecraft.prototype, {
@@ -194,7 +194,7 @@
             this.world.tick();
         },
         sendSettings: function () {
-            this.server.emit(['play', 0x15], {
+            this.server.emit('play 15', {
                 id: '0x15',
                 locale: 'en_US',
                 viewDistance: 6,
@@ -203,11 +203,11 @@
                 difficulty: 3,
                 showCape: true 
             });
-            this.server.emit(['play', 0x17], {
+            this.server.emit('play 17', {
                 channel: 'MC|Brand',
                 data: 'vanilla'.split('').map(function(s){return s.charCodeAt(0);})
             });
-            this.server.emit(['play', 0x09], {
+            this.server.emit('play 09', {
                 slotId: 2
             });
         }
@@ -256,7 +256,7 @@
             }
         }.bind(this));
 
-        this.world.mc.server.on(['play', 0x08], function (data) {
+        this.world.mc.server.on('play 08', function (data) {
             this.spawned = true;
             this.position.x = data.x;
             this.position.y = data.y;
@@ -567,7 +567,7 @@
             }
         },
         sendUpdate: function () {
-            this.world.mc.server.emit(['play', 0x06], {
+            this.world.mc.server.emit('play 06', {
                 x: this.position.x,
                 y: this.position.y,
                 z: this.position.z,
@@ -770,10 +770,10 @@
         this.chunks = {};
         this.server = server;
         var self = this;
-        this.server.on(['play', 0x23], function (data) {
+        this.server.on('play 23', function (data) {
             self.world.setBlock(data.x, data.y, data.z, data.type, data.metadata);
         });
-        this.server.on(['play', 0x26], function (data) {
+        this.server.on('play 26', function (data) {
             var stream = new Streams.ReadStream(new Zlib.Inflate(new Uint8Array(data.compressedChunkData)).decompress().buffer);
             var l = mc.CHUNK_SIZE*mc.CHUNK_SIZE*mc.CHUNK_SIZE;
             data.meta.forEach(function (d) {
