@@ -179,7 +179,7 @@
         render: function () {
             var render;
             render = (function () {
-                webkitRequestAnimationFrame(render);
+                requestAnimationFrame(render);
                 this.stats.begin();
                 this.player.tick();
                 this.tick();
