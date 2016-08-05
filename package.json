@@ -1,25 +1,33 @@
 {
-  "name": "mc.js",
-  "version": "0.0.0-1",
-  "description": "JS Minecraft client",
+  "name": "minecraft.js",
+  "version": "0.0.1",
+  "description": "A web based Minecraft client",
   "main": "server.js",
+  "directories": {
+    "test": "test"
+  },
   "dependencies": {
-    "socket.io": "~0.9.16",
-    "express": "~3.4.8",
-    "minecraft-protocol": "~0.11.6",
-    "ws": "~0.4.27"
+    "bson": "^0.4.12",
+    "express": "^3.4.8",
+    "minecraft-protocol": "^0.15.0",
+    "ws": "^0.8.0"
   },
   "devDependencies": {},
   "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trumank/minecraft.js.git"
+  },
+  "keywords": [
+    "minecraft"
+  ],
   "author": "Truman Kilen",
   "license": "MIT",
-  "gitHead": "fdfca496beaed9a24c26b8bca3383eca40beb84c",
-  "readmeFilename": "README.md",
-  "subdomain": "mcjs",
-  "engines": {
-    "node": "0.10.x"
-  }
+  "bugs": {
+    "url": "https://github.com/trumank/minecraft.js/issues"
+  },
+  "homepage": "https://github.com/trumank/minecraft.js"
 }

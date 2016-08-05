@@ -1,77 +1,77 @@
 var mc = require('minecraft-protocol'),
-    express = require('express'),
-    http = require('http'),
-    path = require('path');
+  express = require('express'),
+  http = require('http'),
+  path = require('path'),
+  WebSocket = require('ws'),
+  BSON = new (require('bson').BSONPure.BSON)();
 
 var app = express();
-app.configure(function () {
-    app.use(express.static(path.resolve('.')));
-});
+app.use(express.static(path.resolve('.')));
+
 var httpServer = http.createServer(app);
-require('socket.io').listen(httpServer, {log: false}).sockets.on('connection', function (socket) {
-    var session = null;
-    socket.on('auth', function (data) {
-        /*mc.yggdrasil.getSession(data.username, data.password, mc.yggdrasil.generateUUID(), false, function (err, s) {
-            if (err) {
-                socket.emit('auth failed', {});
-            } else {
-                session = s;
-                socket.emit('auth', session);
-            }
-        });*/
-        session = {
-            username: data.username,
-            //password: data.password
-        };
-        socket.emit('auth', {});
-    });
-    socket.on('connect', function (data) {
-        data.username = session.username;
-        data.password = session.password;
-        var client = mc.createClient(data);
-        client.on('state', function (state) {
-            if (state === mc.protocol.states.PLAY) {
-                new Proxy(client, socket);
-            }
-        });
-    });
+
+var wss = new WebSocket.Server({server: httpServer});
+wss.on('connection', function(ws) {
+  var session = null;
+  ws.on('message', function(data) {
+    var message = BSON.deserialize(data);
+    var packet = message.packet;
+    var type = message.type;
+    if (type === 'authenticate') {
+      mc.yggdrasil.getSession(packet.username, packet.password, mc.yggdrasil.generateUUID(), false, function(err, ses) {
+        session = ses;
+        ws.send(BSON.serialize({
+          type: 'session',
+          packet: {
+            session: session,
+            error: err
+          }
+        }));
+      });
+    } else if (type === 'refresh') {
+      mc.yggdrasil.getSession(packet.username, packet.accessToken, packet.clientToken, true, function(err, ses) {
+        session = ses;
+        ws.send(BSON.serialize({
+          type: 'session',
+          packet: {
+            session: session,
+            error: err
+          }
+        }));
+      });
+    } else if (type === 'connect') {
+      if (!session) {
+        console.warn('Client has not authenticated');
+      }
+      packet.username = session ? session.selectedProfile.name : 'Player';
+      packet.accessToken = session ? session.accessToken : '';
+      packet.clientToken = session ? session.clientToken : '';
+      var client = mc.createClient(packet);
+      client.on('state', function (state) {
+        if (state === mc.states.PLAY) {
+          new Proxy(client, ws);
+        }
+      });
+    }
+  });
+
 });
 httpServer.listen(process.env.PORT || 8080);
 
-function hookServer(obj, cb) {
-    obj.on('packet', function (packet) {
-        var id = packet.id;
-        delete packet.id;
-        cb([packet.state, id], packet);
-    });
-}
-function hookClient(obj, cb) {
-    var $emit = obj.$emit;
-    obj.$emit = function () {
-        var args = [].slice.call(arguments);
-        $emit.apply(obj, args);
-        cb.apply(null, args);
-    };
-}
-
 function Proxy(server, client) {
-    client.on('disconnect', function () {
-        server.end();
+  client.on('close', function () {
+    server.end();
+  });
+  server.on('end', function () {
+    client.close();
+  });
+  server.on('packet', function(packet, meta) {
+    if (client.readyState !== client.OPEN)
+      return client.close();
+    var buffer = BSON.serialize({
+      type: [meta.state, meta.name],
+      packet: packet
     });
-    server.on('end', function () {
-        client.disconnect();
-    });
-    hookServer(server, function (e, data) {
-        if (Array.isArray(e)) {
-            var hex = e[1].toString(16);
-            var id = e[0] + ' ' + (hex.length === 1 ? + '0' : '') + hex;
-            client.emit(id, data);
-        }
-    });
-    hookClient(client, function (e, data) {
-        var match;
-        if (match = e.match(/^(\w+) ([0-9a-f]+)$/)) {
-            server.write([match[1], parseInt(match[2], 16)], data);
-        }
-    });
+    client.send(buffer);
+  });
 }

@@ -1,5 +1,5 @@
-mc = {shaders: {}, models: {}};
-mc.shaders.terrain = new THREE.ShaderMaterial({
+MC = {shaders: {}, models: {}};
+MC.shaders.terrain = new THREE.ShaderMaterial({
     attributes: {
         color: {type: 'v3', value: null},
         uv: {type: 'v2', value: null}
@@ -103,7 +103,7 @@ mc.shaders.terrain = new THREE.ShaderMaterial({
     vertexColors: THREE.VertexColors
 });
 
-mc.shaders.terrain = new THREE.MeshLambertMaterial({
+MC.shaders.terrain = new THREE.MeshLambertMaterial({
     vertexColors: THREE.VertexColors,
     gammaOutput: true,
     alphaTest: 0.5

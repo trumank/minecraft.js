@@ -4,23 +4,7 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <div id="mc">
-      <div class="content" tabindex="0">
-        <canvas></canvas>
-        <div class="cursor"></div>
-        <div class="chat"></div>
-        <div class="overlay">
-          <div class="loading">
-            <div class="bar"></div>
-          </div>
-          <div class="auth">
-            <input class="username" type="text" placeholder="username">
-            <input class="password" type="password" placeholder="password">
-            <button class="submit">sign in</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="mc"></div>
     <script type="text/javascript" src="lib/three.js"></script>
     <script type="text/javascript" src="lib/zlib.min.js"></script>
     <script type="text/javascript" src="lib/zip.js"></script>
@@ -28,16 +12,15 @@
     <script type="text/javascript" src="lib/binstream.js"></script>
     <script type="text/javascript" src="lib/stats.js"></script>
     <script type="text/javascript" src="lib/async.js"></script>
+    <script type="text/javascript" src="lib/bson.js"></script>
+    <script type="text/javascript" src="lib/EventEmitter.js"></script>
+    <script type="text/javascript" src="lib/heir.js"></script>
     <script type="text/javascript" src="js/shaders.js"></script>
     <script type="text/javascript" src="js/blocks.js"></script>
     <script type="text/javascript" src="js/minecraft.js"></script>
-    <script type="text/javascript" src="js/minecraft.js"></script>
-    <script type="text/javascript" src="js/lib.js"></script>
-    <script type="text/javascript" src="js/resources.js"></script>
-    <script type="text/javascript" src="socket.io/socket.io.js"></script>
     <script type="text/javascript">
       zip.workerScriptsPath = "lib/";
-      window.m = new mc.Minecraft(document.getElementById('mc'), {
+      window.m = new MC.Minecraft(document.getElementById('mc'), {
         host: 'localhost',
         port: 25565
       });
