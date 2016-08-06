@@ -25,6 +25,9 @@
       this.gui.signIn(function(err, session) {
         this.joinServer(server.host, server.port);
       }.bind(this));
+      this.gui.offline(function(err) {
+        this.joinServer(server.host, server.port);
+      }.bind(this));
     }.bind(this));
     this.server.on(['login', 'success'], function(packet) {
       this.sendSettings();
@@ -1183,7 +1186,8 @@
     this.auth;
     this.username;
     this.password;
-    this.button;
+    this.buttonSignIn;
+    this.buttonOffline;
     this.renderer;
 
     this.keysDown = [];
@@ -1296,19 +1300,21 @@
 
         this.auth.appendChild(this.password);
 
-        this.button = document.createElement('button');
-        this.button.setAttribute('class', 'button');
-        this.button.innerText = 'sign in';
+        this.buttonSignIn = document.createElement('button');
+        this.buttonSignIn.setAttribute('class', 'button-sign-in');
+        this.buttonSignIn.innerText = 'sign in';
 
-        this.auth.appendChild(this.button);
+        this.auth.appendChild(this.buttonSignIn);
+
+        this.buttonOffline = document.createElement('button');
+        this.buttonOffline.setAttribute('class', 'button-offline');
+        this.buttonOffline.innerText = 'offline';
+
+        this.auth.appendChild(this.buttonOffline);
 
       this.overlay.appendChild(this.auth);
 
     this.content.appendChild(this.overlay);
-
-    this.button.addEventListener('click', function() {
-      //this.mc.joinServer(this.username.value, this.password.value);
-    }.bind(this));
 
     this.content.addEventListener('keydown', function(e) {
       this.keysDown[e.keyCode] = true;
@@ -1331,7 +1337,7 @@
         return console.log(data.err);
       }
       var session = data.session;
-      this.button.removeEventListener('click', click);
+      this.buttonSignIn.removeEventListener('click', click);
       this.overlay.style.display = 'none';
       localStorage.session = JSON.stringify(session);
       cb(null, session);
@@ -1350,8 +1356,14 @@
         localStorage.credentials = JSON.stringify(cred);
         this.mc.server.send('authenticate', cred);
       }.bind(this);
-      this.button.addEventListener('click', click);
+      this.buttonSignIn.addEventListener('click', click);
     }
+  };
+  MC.GUI.prototype.offline = function(cb) {
+    this.buttonOffline.addEventListener('click', function() {
+      this.overlay.style.display = 'none';
+      cb(null);
+    }.bind(this));
   };
 
   MC.nbt = {

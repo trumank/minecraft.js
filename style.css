@@ -71,7 +71,7 @@ body {
 .overlay .auth {
     position: absolute;
     width: 300px;
-    height: 200px;
+    height: 250px;
     left: 0;
     right: 0;
     top: 0;
@@ -82,7 +82,7 @@ body {
     display: none;
 }
 
-.overlay .auth input {
+.overlay .auth input, .overlay .auth > button {
     width: 100%;
     height: 70px;
     margin-bottom: 10px;
@@ -93,7 +93,16 @@ body {
     border: none;
 }
 
-.overlay .auth button {
+.overlay .auth .button-sign-in {
+    width: 100%;
+    height: 40px;
+    box-sizing: border-box;
+    font: inherit;
+    background: #2E1A0A;
+    border: none;
+}
+
+.overlay .auth .button-offline {
     width: 100%;
     height: 40px;
     box-sizing: border-box;
