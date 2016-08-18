@@ -1,6 +1,5 @@
-importScripts('../blocks.js', '../lib.js');
+importScripts('../lib.js');
 
-var chunkSize = 16;
 var config;
 
 var uvx = ['x1', 'x1', 'x2', 'x2'];
@@ -14,47 +13,52 @@ function mod(n1, n2) {
   return ((n1 % n2) + n2) % n2;
 }
 
-self.onmessage = function(e) {
-  if (e.data.config) {
-    config = e.data;
-  } else {
-    var chunk = e.data;
-    postMessage({
-      position: chunk.position,
-      data: build(chunk),
-      blocks: chunk.blocks,
-      blockLight: chunk.blockLight,
-      skyLight: chunk.skyLight
-    }, [chunk.blocks.buffer, chunk.blockLight.buffer, chunk.skyLight.buffer]);
+self.onmessage = function(msg) {
+  var [type, data] = msg.data;
+  switch(type) {
+    case 'configure':
+      config = data;
+      for (var id = 0; id < config.meshingFunctions.length; id++) {
+        if (config.meshingFunctions[id]) {
+          config.meshingFunctions[id] = new Function(['fn', 'x', 'y', 'z', 'culled'], config.meshingFunctions[id]);
+        }
+      }
+      break;
+    case 'build':
+      var mesh = build(data);
+      postMessage(['build', {
+        position: data.position,
+        mesh: mesh,
+        data: data.data
+      }, data.data.concat(mesh).map(a => a.buffer)]);
+      break;
+    default:
+      throw new Error('Unkown message type', type);
   }
 };
 
 function build(chunk) {
   var pos = chunk.position;
-  var blocks = chunk.blocks;
-  var blockLight = chunk.blockLight;
-  var skyLight = chunk.skyLight;
-  var culled = new Uint8Array(chunkSize * chunkSize * chunkSize);
-  var indices = new MC.DynamicArray(Int16Array);
+  var [blocks, blockLight, skyLight] = chunk.data;
+  var culled = new Uint8Array(config.CHUNK_SIZE * config.CHUNK_SIZE * config.CHUNK_SIZE);
+  var indices = new MC.DynamicArray(Uint32Array);
   var positions = new MC.DynamicArray(Float32Array);
   var pi = 0;
   var colors = new MC.DynamicArray(Float32Array);
   var uvs = new MC.DynamicArray(Float32Array);
   var j = 0;
   var f = {
-    uvx: function(id, vertex) {
-      return config.terrainRects[id][uvx[vertex]];
-    },
-    uvy: function(id, vertex) {
-      return config.terrainRects[id][uvy[vertex]];
-    },
     vertex: function(x, y, z, r, g, b, uvx, uvy) {
       positions.push(x);
       positions.push(y);
       positions.push(z);
-      r = (r * 95 + 19) / 115;
-      g = (g * 78 + 15) / 94;
-      b = (b * 40 + 16) / 57;
+      // ok wt actual f was I doing here? Trying to linearly scale to match minecraft or something?
+      // r = (r * 95 + 19) / 115;
+      // g = (g * 78 + 15) / 94;
+      // b = (b * 40 + 16) / 57;
+      r = r * r * 1.5 + 0.1;
+      g = g * g * 1.5 + 0.1;
+      b = b * b * 1.5 + 0.1;
       colors.push(r, g, b);
       colors.push(r, g, b);
       colors.push(r, g, b);
@@ -62,50 +66,15 @@ function build(chunk) {
       uvs.push(uvy);
       return pi++;
     },
-    quad: function(a, b, c, d) {
-      indices.push(a);
-      indices.push(b);
-      indices.push(c);
-      indices.push(a);
-      indices.push(c);
-      indices.push(d);
-    },
-    squad: function (n, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) {
-      //var i = f.index(n);
+    squade: function (ux1, uy1, ux2, uy2, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) {
       var ac = s1 / 16;
-      var a = f.vertex(x1, y1, z1, ac, ac, ac, f.uvx(n, 0), f.uvy(n, 0));
+      var a = f.vertex(x1, y1, z1, ac, ac, ac, ux1, uy1);
       var bc = s2 / 16;
-      var b = f.vertex(x2, y2, z2, bc, bc, bc, f.uvx(n, 1), f.uvy(n, 1));
+      var b = f.vertex(x2, y2, z2, bc, bc, bc, ux1, uy2);
       var cc = s3 / 16;
-      var c = f.vertex(x3, y3, z3, cc, cc, cc, f.uvx(n, 2), f.uvy(n, 2));
+      var c = f.vertex(x3, y3, z3, cc, cc, cc, ux2, uy2);
       var dc = s4 / 16;
-      var d = f.vertex(x4, y4, z4, dc, dc, dc, f.uvx(n, 3), f.uvy(n, 3));
-      if (s1 + s3 > s2 + s4) {
-        indices.push(a);
-        indices.push(b);
-        indices.push(c);
-        indices.push(a);
-        indices.push(c);
-        indices.push(d);
-      } else {
-        indices.push(b);
-        indices.push(c);
-        indices.push(d);
-        indices.push(b);
-        indices.push(d);
-        indices.push(a);
-      }
-    },
-    squade: function (n, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) {
-      //var i = f.index(n);
-      var ac = s1 / 16;
-      var a = f.vertex(x1, y1, z1, ac, ac, ac, n.x1, n.y1);
-      var bc = s2 / 16;
-      var b = f.vertex(x2, y2, z2, bc, bc, bc, n.x1, n.y2);
-      var cc = s3 / 16;
-      var c = f.vertex(x3, y3, z3, cc, cc, cc, n.x2, n.y2);
-      var dc = s4 / 16;
-      var d = f.vertex(x4, y4, z4, dc, dc, dc, n.x2, n.y1);
+      var d = f.vertex(x4, y4, z4, dc, dc, dc, ux2, uy1);
       if (s1 + s3 > s2 + s4) {
         indices.push(a);
         indices.push(b);
@@ -123,54 +92,52 @@ function build(chunk) {
       }
     },
     getBlock: function(x, y, z) {
-      if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-        //throw new Error('wtf');
-        /*var cx = (x + chunkSize * pos.x) >> 4;
-        var cy = (y + chunkSize * pos.y) >> 4;
-        var cz = (z + chunkSize * pos.z) >> 4;
-        var c = chunks[positionHash(cx, cy, cz)];
-        if (!c) {
-          return -1;
-        }
-        return c.blocks[mod(x, chunkSize) + mod(z, chunkSize) * chunkSize + mod(y, chunkSize) * chunkSize * chunkSize] >> 4;*/
+      if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
+        // var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
+        // var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
+        // var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
+        // var c = chunks[positionHash(cx, cy, cz)];
+        // if (!c) {
+        //   return -1;
+        // }
+        // return c.blocks[mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE] >> 4;
         return 0;
       }
       // special case for this chunk for optimization
-      return blocks[x + z * chunkSize + y * chunkSize * chunkSize];
+      return blocks[x + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE];
     },
     getProp: function(x, y, z, prop) {
       var arr;
-      if (x < 0 || x >= chunkSize || y < 0 || y >= chunkSize || z < 0 || z >= chunkSize) {
-        /*throw new Error('wtf');
-        var cx = (x + chunkSize * pos.x) >> 4;
-        var cy = (y + chunkSize * pos.y) >> 4;
-        var cz = (z + chunkSize * pos.z) >> 4;
-        var c = chunks[positionHash(cx, cy, cz)];
-        if (!c) {
-          return -1;
-        }
-        arr = c[prop];*/
-        return 0;
+      if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
+        // var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
+        // var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
+        // var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
+        // var c = chunks[positionHash(cx, cy, cz)];
+        // if (!c) {
+        //   return -1;
+        // }
+        // arr = c.data[prop];
+        return -1;
       } else {
         // special case for this chunk for optimization
-        arr = chunk[prop];
+        arr = chunk.data[prop];
       }
-      var b = arr[(mod(x, chunkSize) + mod(z, chunkSize) * chunkSize + mod(y, chunkSize) * chunkSize * chunkSize) >> 1];
+      var b = arr[(mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE) >> 1];
       return (x % 2 ? b >> 4 : b) & 0xf;
     },
     getBlockLight: function (x, y, z) {
       //return 10;
       //return f.getProp(x, y, z, 'blockLight');
-      return f.getProp(x, y, z, 'blockLight') | f.getProp(x, y, z, 'skyLight');
+      return f.getProp(x, y, z, 1);// | f.getProp(x, y, z, 'skyLight');
     },
     getSkyLight: function (x, y, z) {
-      return f.getProp(x, y, z, 'skyLight');
+      return f.getProp(x, y, z, 2);
     },
     isBlockOpaque: function(x, y, z) {
       var id = f.getBlock(x, y, z);
-      var block = MC.Blocks.get(id);
+      var block = MC.Blocks.getById(id);
       if (block) {
-        return block.solid; // TODO
+        return block.opaque; // TODO
       } else if (id === -1) {
         return true;
       }
@@ -178,81 +145,70 @@ function build(chunk) {
     }
   };
 
-  for (var y = 0; y < chunkSize; y++) {
-    for (var z = 0; z < chunkSize; z++) {
-      for (var x = 0; x < chunkSize; x++) {
-        var block = MC.Blocks.get(blocks[x + z * chunkSize + y * chunkSize * chunkSize]);
-        var c = (block && block.solid);
-        culled[(x - 1) + z * chunkSize + y * chunkSize * chunkSize] |= (c & x > 0) << 0;
-        culled[(x + 1) + z * chunkSize + y * chunkSize * chunkSize] |= (c & x < chunkSize - 1) << 1;
-        culled[x + z * chunkSize + (y - 1) * chunkSize * chunkSize] |= (c & y > 0) << 2;
-        culled[x + z * chunkSize + (y + 1) * chunkSize * chunkSize] |= (c & y < chunkSize - 1) << 3;
-        culled[x + (z - 1) * chunkSize + y * chunkSize * chunkSize] |= (c & z > 0) << 4;
-        culled[x + (z + 1) * chunkSize + y * chunkSize * chunkSize] |= (c & z < chunkSize - 1) << 5;
+  for (var y = 0; y < config.CHUNK_SIZE; y++) {
+    for (var z = 0; z < config.CHUNK_SIZE; z++) {
+      for (var x = 0; x < config.CHUNK_SIZE; x++) {
+        var block = MC.Blocks.getById(blocks[x + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE]);
+        var c = (block && block.opaque);
+        culled[(x - 1) + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & x > 0) << 0;
+        culled[(x + 1) + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & x < config.CHUNK_SIZE - 1) << 1;
+        culled[x + z * config.CHUNK_SIZE + (y - 1) * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & y > 0) << 2;
+        culled[x + z * config.CHUNK_SIZE + (y + 1) * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & y < config.CHUNK_SIZE - 1) << 3;
+        culled[x + (z - 1) * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & z > 0) << 4;
+        culled[x + (z + 1) * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & z < config.CHUNK_SIZE - 1) << 5;
       }
     }
   }
-  /*for (var x = 0; x < chunkSize; x++) {
-    for (var y = 0; y < chunkSize; y++) {
-      culled[x + 0 * chunkSize + y * chunkSize * chunkSize] |= 1 << 5;
-      culled[x + 15 * chunkSize + y * chunkSize * chunkSize] |= 1 << 4;
+  /*for (var x = 0; x < config.CHUNK_SIZE; x++) {
+    for (var y = 0; y < config.CHUNK_SIZE; y++) {
+      culled[x + 0 * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 5;
+      culled[x + 15 * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 4;
     }
   }
-  for (var x = 0; x < chunkSize; x++) {
-    for (var z = 0; z < chunkSize; z++) {
-      culled[x + z * chunkSize + 0 * chunkSize * chunkSize] |= 1 << 3;
-      culled[x + z * chunkSize + 15 * chunkSize * chunkSize] |= 1 << 2;
+  for (var x = 0; x < config.CHUNK_SIZE; x++) {
+    for (var z = 0; z < config.CHUNK_SIZE; z++) {
+      culled[x + z * config.CHUNK_SIZE + 0 * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 3;
+      culled[x + z * config.CHUNK_SIZE + 15 * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 2;
     }
   }
-  for (var y = 0; y < chunkSize; y++) {
-    for (var z = 0; z < chunkSize; z++) {
-      culled[0 + z * chunkSize + y * chunkSize * chunkSize] |= 1 << 1;
-      culled[15 + z * chunkSize + y * chunkSize * chunkSize] |= 1 << 0;
+  for (var y = 0; y < config.CHUNK_SIZE; y++) {
+    for (var z = 0; z < config.CHUNK_SIZE; z++) {
+      culled[0 + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 1;
+      culled[15 + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 0;
     }
   }*/
-  var ranges = {};
+  // var ranges = {};
   var block, k = 0;
-  for (var y = 0; y < chunkSize; y++) {
-    for (var z = 0; z < chunkSize; z++) {
-      for (var x = 0; x < chunkSize; x++) {
+  for (var y = 0; y < config.CHUNK_SIZE; y++) {
+    for (var z = 0; z < config.CHUNK_SIZE; z++) {
+      for (var x = 0; x < config.CHUNK_SIZE; x++) {
         if (blocks[j]) {
           var s = indices.size();
-          MC.draw(blocks[j], x, y, z, culled[j], f);
-          if (s !== indices.size()) {
-            ranges[positionHash(x, y, z)] = [s, indices.size() - s];
+          var mesh = config.meshingFunctions[blocks[j]];
+          if (mesh) {
+            mesh(f, x, y, z, culled[j])
           }
+          //MC.draw(blocks[j], x, y, z, culled[j], f);
+          // if (s !== indices.size()) {
+          //   ranges[positionHash(x, y, z)] = [s, indices.size() - s];
+          // }
         }
         j++;
       }
     }
   }
-  indices = indices.concat();
-  positions = positions.concat();
-  colors = colors.concat();
-  uvs = uvs.concat();
-  return {
-    blocks: ranges,
-    attributes: {
-      index: {
-        itemSize: 1,
-        array: indices,
-        numItems: indices.length
-      },
-      position: {
-        itemSize: 3,
-        array: positions,
-        numItems: positions.length
-      },
-      color: {
-        itemSize: 3,
-        array: colors,
-        numItems: colors.length
-      },
-      uv: {
-        itemSize: 2,
-        array: uvs,
-        numItems: uvs.length
-      }
-    }
-  };
+  // indices = indices.concat();
+  // positions = positions.concat();
+  // colors = colors.concat();
+  // uvs = uvs.concat();
+  // return {
+  //   blocks: ranges,
+  //   attributes: {
+  //     index: indices,
+  //     position: positions,
+  //     color: colors,
+  //     uv: uvs
+  //   }
+  // };
+  return [indices, positions, colors, uvs].map(b => b.concat());
 }

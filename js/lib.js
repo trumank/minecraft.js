@@ -1,77 +1,414 @@
 (function (MC) {
   'use strict';
-  var extend = function (base, ex) {
-    for (var key in ex) {
-      if (ex.hasOwnProperty(key)) {
-        base[key] = ex[key];
+
+  var Util = {
+    random: array => {
+      return Array.isArray(array) ? array[Math.random() * array.length | 0] : array;
+    },
+    getVariant: blockState => {
+      if (Array.isArray(blockState.variants.normal)) {
+        return Util.random(blockState.variants.normal);
+      } else {
+        return blockState.variants.normal;
       }
     }
   };
 
-  function NameIDMap() {
-    this.names = {};
-    this.ids = {};
+  MC.DynamicArray = class DynamicArray {
+    constructor(type) {
+      this.type = type;
+      this.chunkSize = 16;
+      this.chunks = [];
+      this.totalSize = 0;
+      this.currentChunk = null;
+      this.currentIndex = 0;
+    }
+    push(item) {
+      if (!this.currentChunk || this.currentIndex >= this.chunkSize) {
+        this.expand();
+      }
+      this.currentChunk[this.currentIndex++] = item;
+      return this.totalSize++;
+    }
+    expand() {
+      this.chunkSize *= 2;
+      this.currentChunk = new this.type(this.chunkSize);
+      this.currentIndex = 0;
+      this.chunks.push(this.currentChunk);
+    }
+    size() {
+      return this.totalSize;
+    }
+    concat() {
+      if (this.totalSize === 0) {
+        return new this.type(0);
+      }
+      var whole = new this.type(this.totalSize);
+      var offset = 0,
+        i;
+      for (i = 0; i < this.chunks.length - 1; i++) {
+        whole.set(this.chunks[i], offset);
+        offset += this.chunks[i].length;
+      }
+      whole.set(this.chunks[i].subarray(0, this.currentIndex), offset);
+      return whole;
+    }
+  };
+
+  MC.Chunk = class Chunk {
+    constructor(world, x, y, z, data) {
+      this.world = world;
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      this.blocks = data.blocks;
+      this.blockLight = data.blockLight;
+      this.skyLight = data.skyLight;
+      this.transBlocks = new Uint16Array(this.blocks.length);
+      this.transBlocks.set(this.blocks);
+      this.transBlockLight = new Uint8Array(this.blockLight.length);
+      this.transBlockLight.set(this.blockLight);
+      this.transSkyLight = new Uint8Array(this.skyLight.length);
+      this.transSkyLight.set(this.skyLight);
+      this.queue = {};
+      this.buildMesh();
+      // var s = this.world.getSurroundingChunks(this.x, this.y, this.z);
+      // for (var i = 0; i < s.length; i++) {
+      //   s[i].buildMesh();
+      // }
+
+      this.functions = null;
+    }
+    update(x, y, z) {
+      /*var c;
+      if (x === 0 && (c = this.world.getChunk(this.x - 1, this.y, this.z)))
+        c.buildMesh();
+      if (x === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x + 1, this.y, this.z)))
+        c.buildMesh();
+      if (y === 0 && (c = this.world.getChunk(this.x, this.y - 1, this.z)))
+        c.buildMesh();
+      if (y === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y + 1, this.z)))
+        c.buildMesh();
+      if (z === 0 && (c = this.world.getChunk(this.x, this.y, this.z - 1)))
+        c.buildMesh();
+      if (z === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y, this.z + 1)))
+        c.buildMesh();*/
+    }
+    setBlock(x, y, z, id) {
+      var index = x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE;
+      this.blocks[index] = id;
+
+      if (this.isBuilding()) {
+        if (!this.diff) {
+          this.diff = Object.create(null);
+        }
+        this.diff[index] = id; // TODO
+      } else {
+        this.transBlocks[index] = id;
+      }
+      this.buildMesh();
+    }
+    getBlock(x, y, z) {
+      if (x < 0 || x >= MC.CHUNK_SIZE || y < 0 || y > MC.CHUNK_SIZE || z < 0 || z >= MC.CHUNK_SIZE) {
+        return -1;
+      }
+      return this.blocks[x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE];
+    }
+
+    isBlockSolid(x, y, z) {
+      var id = this.getBlock(x, y, z);
+      var b = MC.Blocks.getById(id);
+      if (b) {
+        return b.solid;
+      } else if (id === -1) {
+        return true;
+      }
+      return false;
+    }
+
+    buildMesh() {
+      if (this.queued) {
+        return;
+      }
+      this.queued = true;
+      this.world.queueChunk(this);
+    }
+    isBuilding() {
+      return !(this.transBlocks && this.transBlocks.buffer);
+    }
+    setGeometryBuffer(res) {
+      //this.blockIndexes = res.blocks;
+      var geometry = new THREE.BufferGeometry();
+      geometry.setIndex(new THREE.BufferAttribute(res[0], 1));
+      geometry.addAttribute('position', new THREE.BufferAttribute(res[1], 3));
+      geometry.addAttribute('color', new THREE.BufferAttribute(res[2], 3));
+      geometry.addAttribute('uv', new THREE.BufferAttribute(res[3], 2));
+      //geometry.computeVertexNormals(); // TODO: Do we even need normals? They're slow to compute
+      var mesh = new THREE.Mesh(geometry, this.world.mc.resources.materials.terrain);
+
+      this.oldMesh = this.mesh;
+      this.dirty = false;
+      this.mesh = mesh;
+      this.world.updateGeometry(this);
+      this.queued = false;
+      this.applyDiff();
+      //this.functions = this.createFunctions();
+    }
+    applyDiff() {
+      if (this.diff && !this.isBuilding()) {
+        for (var i in this.diff) {
+          this.transBlocks[i] = this.diff[i];
+        }
+        this.buildMesh();
+      }
+    }
+  };
+
+  MC.BlockMap = class BlockMap {
+    constructor() {
+      this.ids = new Map();
+      this.names = new Map();
+    }
+    getByName(name) {
+      return this.names.get(name);
+    }
+    getById(id) {
+      return this.ids.get(id >> 4);
+    }
+    add(prefix, blocks) {
+      for (var block of blocks) {
+        block.prefix = prefix;
+        this.ids.set(block.id, block);
+        this.names.set(prefix + ':' + block.name, block);
+      }
+    }
+    getModel(resources, id) {
+      var block = this.getById(id);
+      if (!block) return;
+      var [model, state] = block.getState(id & 0xf);
+      model = block.prefix + model;
+      var blockstate = resources.blockStates[model];
+      if (!blockstate) return; //console.warn('missing block state for ' + block.name);
+      var variant = blockstate.variants[state];
+      if (!variant) return; //console.warn('missing variant for ' + block.name);
+      return Array.isArray(variant) ? variant : [variant];
+    }
   }
-  NameIDMap.prototype.nameOf = function (id) {
-    return this.names[id];
-  };
-  NameIDMap.prototype.idOf = function (name) {
-    return this.ids[name];
-  };
-  NameIDMap.prototype.add = function (prefix, map) {
-    var self = this;
-    Object.keys(map).forEach(function (name) {
-      var prefixed = prefix + name;
-      var id = map[name];
-      self.names[id] = prefixed;
-      self.ids[prefixed] = id;
-    });
-  };
 
-  MC.DynamicArray = function DynamicArray(type) {
-    this.type = type;
-    this.chunkSize = 16;
-    this.chunks = [];
-    this.totalSize = 0;
-    this.currentChunk = null;
-    this.currentIndex = 0;
-  };
-  MC.DynamicArray.prototype.push = function (item) {
-    if (!this.currentChunk || this.currentIndex >= this.chunkSize) {
-      this.expand();
+  MC.Block = class Block {
+    constructor(id, name, solid, opaque, states) {
+      this.id = id;
+      this.name = name;
+      this.solid = !!solid;
+      this.opaque = !!opaque;
+      this.states = (states || []).map(state => {
+        return Array.isArray(state) ? state : [state, 'normal'];
+      });
+      this.prefix;
     }
-    this.currentChunk[this.currentIndex++] = item;
-    return this.totalSize++;
-  };
-
-  MC.DynamicArray.prototype.expand = function () {
-    this.chunkSize *= 2;
-    this.currentChunk = new this.type(this.chunkSize);
-    this.currentIndex = 0;
-    this.chunks.push(this.currentChunk);
-  };
-
-  MC.DynamicArray.prototype.size = function () {
-    return this.totalSize;
-  };
-
-  MC.DynamicArray.prototype.concat = function () {
-    if (this.totalSize === 0) {
-      return new this.type(0);
+    getState(metadata) { // TODO: Some blocks need more than metadata to determine state (e.g. grass)
+      return this.states[metadata] || [this.name, 'normal'];
     }
-    var whole = new this.type(this.totalSize);
-    var offset = 0,
-      i;
-    for (i = 0; i < this.chunks.length - 1; i++) {
-      whole.set(this.chunks[i], offset);
-      offset += this.chunks[i].length;
-    }
-    whole.set(this.chunks[i].subarray(0, this.currentIndex), offset);
-    return whole;
-  };
+  }
 
-  MC.ID = new NameIDMap();
 
-  MC.ID.add('minecraft:', {air:0,stone:1,grass:2,dirt:3,cobblestone:4,planks:5,sapling:6,bedrock:7,flowing_water:8,water:9,flowing_lava:10,lava:11,sand:12,gravel:13,gold_ore:14,iron_ore:15,coal_ore:16,log:17,leaves:18,sponge:19,glass:20,lapis_ore:21,lapis_block:22,dispenser:23,sandstone:24,noteblock:25,bed:26,golden_rail:27,detector_rail:28,sticky_piston:29,web:30,tallgrass:31,deadbush:32,piston:33,piston_head:34,wool:35,yellow_flower:37,red_flower:38,brown_mushroom:39,red_mushroom:40,gold_block:41,iron_block:42,double_stone_slab:43,stone_slab:44,brick_block:45,tnt:46,bookshelf:47,mossy_cobblestone:48,obsidian:49,torch:50,fire:51,mob_spawner:52,oak_stairs:53,chest:54,redstone_wire:55,diamond_ore:56,diamond_block:57,crafting_table:58,wheat:59,farmland:60,furnace:61,lit_furnace:62,standing_sign:63,wooden_door:64,ladder:65,rail:66,stone_stairs:67,wall_sign:68,lever:69,stone_pressure_plate:70,iron_door:71,wooden_pressure_plate:72,redstone_ore:73,lit_redstone_ore:74,unlit_redstone_torch:75,redstone_torch:76,stone_button:77,snow_layer:78,ice:79,snow:80,cactus:81,clay:82,reeds:83,jukebox:84,fence:85,pumpkin:86,netherrack:87,soul_sand:88,glowstone:89,portal:90,lit_pumpkin:91,cake:92,unpowered_repeater:93,powered_repeater:94,stained_glass:95,trapdoor:96,monster_egg:97,stonebrick:98,/*stonebrick:99,stonebrick:100, TODO*/iron_bars:101,glass_pane:102,melon_block:103,pumpkin_stem:104,melon_stem:105,vine:106,fence_gate:107,brick_stairs:108,stone_brick_stairs:109,mycelium:110,waterlily:111,nether_brick:112,nether_brick_fence:113,nether_brick_stairs:114,nether_wart:115,enchanting_table:116,brewing_stand:117,cauldron:118,end_portal:119,end_portal_frame:120,end_stone:121,dragon_egg:122,redstone_lamp:123,lit_redstone_lamp:124,double_wooden_slab:125,wooden_slab:126,cocoa:127,sandstone_stairs:128,emerald_ore:129,ender_chest:130,tripwire_hook:131,/*tripwire_hook:132 TODO,*/emerald_block:133,spruce_stairs:134,birch_stairs:135,jungle_stairs:136,command_block:137,beacon:138,cobblestone_wall:139,flower_pot:140,carrots:141,potatoes:142,wooden_button:143,skull:144,anvil:145,trapped_chest:146,light_weighted_pressure_plate:147,heavy_weighted_pressure_plate:148,unpowered_comparator:149,powered_comparator:150,daylight_detector:151,redstone_block:152,quartz_ore:153,hopper:154,quartz_block:155,quartz_stairs:156,activator_rail:157,dropper:158,stained_hardened_clay:159,stained_glass_pane:160,leaves2:161,logs2:162,acacia_stairs:163,dark_oak_stairs:164,slime:165,barrier:166,iron_trapdoor:167,prismarine:168,sea_lantern:169,hay_block:170,carpet:171,hardened_clay:172,coal_block:173,packed_ice:174,double_plant:175});
-  MC.ID.add('minecraft:', {iron_shovel:256,iron_pickaxe:257,iron_axe:258,flint_and_steel:259,apple:260,bow:261,arrow:262,coal:263,diamond:264,iron_ingot:265,gold_ingot:266,iron_sword:267,wooden_sword:268,wooden_shovel:269,wooden_pickaxe:270,wooden_axe:271,stone_sword:272,stone_shovel:273,stone_pickaxe:274,stone_axe:275,diamond_sword:276,diamond_shovel:277,diamond_pickaxe:278,diamond_axe:279,stick:280,bowl:281,mushroom_stew:282,golden_sword:283,golden_shovel:284,golden_pickaxe:285,golden_axe:286,string:287,feather:288,gunpowder:289,wooden_hoe:290,stone_hoe:291,iron_hoe:292,diamond_hoe:293,golden_hoe:294,wheat_seeds:295,wheat:296,bread:297,leather_helmet:298,leather_chestplate:299,leather_leggings:300,leather_boots:301,chainmail_helmet:302,chainmail_chestplate:303,chainmail_leggings:304,chainmail_boots:305,iron_helmet:306,iron_chestplate:307,iron_leggings:308,iron_boots:309,diamond_helmet:310,diamond_chestplate:311,diamond_leggings:312,diamond_boots:313,golden_helmet:314,golden_chestplate:315,golden_leggings:316,golden_boots:317,/*flint_and_steel:318,*/porkchop:319,cooked_porkchop:320,painting:321,golden_apple:322,sign:323,wooden_door:324,bucket:325,water_bucket:326,lava_bucket:327,minecart:328,saddle:329,iron_door:330,redstone:331,snowball:332,boat:333,leather:334,milk_bucket:335,brick:336,clay_ball:337,reeds:338,paper:339,book:340,slime_ball:341,chest_minecart:342,furnace_minecart:343,egg:344,compass:345,fishing_rod:346,clock:347,glowstone_dust:348,fish:349,cooked_fish:350,dye:351,bone:352,sugar:353,cake:354,bed:355,repeater:356,cookie:357,filled_map:358,shears:359,melon:360,pumpkin_seeds:361,melon_seeds:362,beef:363,cooked_beef:364,chicken:365,cooked_chicken:366,rotten_flesh:367,ender_pearl:368,blaze_rod:369,ghast_tear:370,gold_nugget:371,nether_wart:372,potion:373,glass_bottle:374,spider_eye:375,fermented_spider_eye:376,blaze_powder:377,magma_cream:378,brewing_stand:379,cauldron:380,ender_eye:381,speckled_melon:382,experience_bottle:384,fire_charge:385,writable_book:386,written_book:387,emerald:388,item_frame:389,flower_pot:390,carrot:391,potato:392,baked_potato:393,poisonous_potato:394,map:395,golden_carrot:396,skull:397,carrot_on_a_stick:398,nether_star:399,pumpkin_pie:400,fireworks:401,firework_charge:402,enchanted_book:403,comparator:404,netherbrick:405,quartz:406,tnt_minecart:407,hopper_minecart:408,prismarine_shard:409,prismarine_crystals:410,rabbit:411,cooked_rabbit:412,rabbit_stew:413,rabbit_foot:414,rabbit_hide:415,iron_horse_armor:417,golden_horse_armor:418,diamond_horse_armor:419,lead:420,name_tag:421,command_block_minecart:422,mutton:423,cooked_mutton:424,record_13:2256,record_cat:2257,record_blocks:2258,record_chirp:2259,record_far:2260,record_mall:2261,record_mellohi:2262,record_stal:2263,record_strad:2264,record_ward:2265,record_11:2266,record_wait:2267});
+  MC.Blocks = new MC.BlockMap();
+
+  MC.Blocks.add('minecraft:', [
+    new MC.Block(0, 'air', false, false),
+    new MC.Block(1, 'stone', true, true, ['stone', 'granite', 'smooth_granite', 'diorite', 'smooth_diorite', 'andesite', 'smooth_andesite']),
+    new MC.Block(2, 'grass', true, true, [['grass', 'snowy=false']]), // TODO: Snowy grass?
+    new MC.Block(3, 'dirt', true, true, ['dirt', 'coarse_dirt']),
+    new MC.Block(4, 'cobblestone', true, true),
+    new MC.Block(5, 'oak_planks', true, true, ['oak_planks', 'spruce_planks', 'birch_planks', 'jungle_planks', 'acacia_planks', 'dark_oak_planks']),
+    new MC.Block(6, 'sapling', false, false, [['oak_sapling', 'stage=0'], ['spruce_sapling', 'stage=0'], ['birch_sapling', 'stage=0'], ['jungle_sapling', 'stage=0'], ['acacia_sapling', 'stage=0'], , , , ['oak_sapling', 'stage=1'], ['spruce_sapling', 'stage=1'], ['birch_sapling', 'stage=1'], ['jungle_sapling', 'stage=1'], ['acacia_sapling', 'stage=1']]),
+    new MC.Block(7, 'bedrock', true, true),
+    new MC.Block(8, 'flowing_water', false, false),
+    new MC.Block(9, 'water', false, false),
+    new MC.Block(10, 'flowing_lava', false, false),
+    new MC.Block(11, 'lava', false, false),
+    new MC.Block(12, 'sand', true, true, ['sand', 'red_sand']),
+    new MC.Block(13, 'gravel', true, true),
+    new MC.Block(14, 'gold_ore', true, true),
+    new MC.Block(15, 'iron_ore', true, true),
+    new MC.Block(16, 'coal_ore', true, true),
+    new MC.Block(17, 'log', true, true, [
+      ['oak_log', 'axis=y'],    ['spruce_log', 'axis=y'],    ['birch_log', 'axis=y'],    ['jungle_log', 'axis=y'],
+      ['oak_log', 'axis=x'],    ['spruce_log', 'axis=x'],    ['birch_log', 'axis=x'],    ['jungle_log', 'axis=x'],
+      ['oak_log', 'axis=z'],    ['spruce_log', 'axis=z'],    ['birch_log', 'axis=z'],    ['jungle_log', 'axis=z'],
+      ['oak_log', 'axis=none'], ['spruce_log', 'axis=none'], ['birch_log', 'axis=none'], ['jungle_log', 'axis=none']]),
+    new MC.Block(18, 'leaves', true, false, [
+      'oak_leaves', 'spruce_leaves', 'birch_leaves', 'jungle_leaves',
+      'oak_leaves', 'spruce_leaves', 'birch_leaves', 'jungle_leaves',
+      'oak_leaves', 'spruce_leaves', 'birch_leaves', 'jungle_leaves',
+      'oak_leaves', 'spruce_leaves', 'birch_leaves', 'jungle_leaves']),
+    new MC.Block(19, 'sponge', true, true),
+    new MC.Block(20, 'glass', true),
+    new MC.Block(21, 'lapis_ore', true, true),
+    new MC.Block(22, 'lapis_block', true, true),
+    new MC.Block(23, 'dispenser', true, true),
+    new MC.Block(24, 'sandstone', true, true),
+    new MC.Block(25, 'noteblock', true, true),
+    new MC.Block(26, 'bed', false),
+    new MC.Block(27, 'golden_rail'),
+    new MC.Block(28, 'detector_rail'),
+    new MC.Block(29, 'sticky_piston'),
+    new MC.Block(30, 'web', false),
+    new MC.Block(31, 'tallgrass', false),
+    new MC.Block(32, 'deadbush', false),
+    new MC.Block(33, 'piston', false),
+    new MC.Block(34, 'piston_head', false),
+    new MC.Block(35, 'wool', true, true, ['white_wool', 'orange_wool', 'magenta_wool', 'light_blue_wool', 'yellow_wool', 'lime_wool', 'pink_wool', 'gray_wool', 'light_gray_wool', 'cyan_wool', 'purple_wool', 'blue_wool', 'brown_wool', 'green_wool', 'red_wool', 'black_wool']),
+    new MC.Block(37, 'yellow_flower', false),
+    new MC.Block(38, 'red_flower', false),
+    new MC.Block(39, 'brown_mushroom', false),
+    new MC.Block(40, 'red_mushroom', false),
+    new MC.Block(41, 'gold_block', true, true),
+    new MC.Block(42, 'iron_block', true, true),
+    new MC.Block(43, 'double_stone_slab', true, true),
+    new MC.Block(44, 'stone_slab', false),
+    new MC.Block(45, 'brick_block', true, true),
+    new MC.Block(46, 'tnt', true, true),
+    new MC.Block(47, 'bookshelf', true),
+    new MC.Block(48, 'mossy_cobblestone', true, true),
+    new MC.Block(49, 'obsidian', true, true),
+    new MC.Block(50, 'torch', false),
+    new MC.Block(51, 'fire', false),
+    new MC.Block(52, 'mob_spawner', false),
+    new MC.Block(53, 'oak_stairs', false),
+    new MC.Block(54, 'chest', false),
+    new MC.Block(55, 'redstone_wire', false),
+    new MC.Block(56, 'diamond_ore', true, true),
+    new MC.Block(57, 'diamond_block', true, true),
+    new MC.Block(58, 'crafting_table', true, true),
+    new MC.Block(59, 'wheat', false),
+    new MC.Block(60, 'farmland', false),
+    new MC.Block(61, 'furnace', true, true),
+    new MC.Block(62, 'lit_furnace', true, true),
+    new MC.Block(63, 'standing_sign', false),
+    new MC.Block(64, 'wooden_door', false),
+    new MC.Block(65, 'ladder', false, false, [['ladder', 'facing=south'], ['ladder', 'facing=south'], ['ladder', 'facing=north'], ['ladder', 'facing=south'], ['ladder', 'facing=west'], ['ladder', 'facing=east']]),
+    new MC.Block(66, 'rail', false),
+    new MC.Block(67, 'stone_stairs', false),
+    new MC.Block(68, 'wall_sign', false),
+    new MC.Block(69, 'lever', false),
+    new MC.Block(70, 'stone_pressure_plate', false),
+    new MC.Block(71, 'iron_door', false),
+    new MC.Block(72, 'wooden_pressure_plate', false),
+    new MC.Block(73, 'redstone_ore', true),
+    new MC.Block(74, 'lit_redstone_ore', true),
+    new MC.Block(75, 'unlit_redstone_torch', false),
+    new MC.Block(76, 'redstone_torch', false),
+    new MC.Block(77, 'stone_button', false),
+    new MC.Block(78, 'snow_layer', false),
+    new MC.Block(79, 'ice', false, true),
+    new MC.Block(80, 'snow', false),
+    new MC.Block(81, 'cactus', false),
+    new MC.Block(82, 'clay', true, true),
+    new MC.Block(83, 'reeds', false),
+    new MC.Block(84, 'jukebox', false, true),
+    new MC.Block(85, 'fence', false),
+    new MC.Block(86, 'pumpkin', true),
+    new MC.Block(87, 'netherrack', true, true),
+    new MC.Block(88, 'soul_sand', false),
+    new MC.Block(89, 'glowstone', true, true),
+    new MC.Block(90, 'portal', false),
+    new MC.Block(91, 'lit_pumpkin', true, true),
+    new MC.Block(92, 'cake', false),
+    new MC.Block(93, 'unpowered_repeater', false),
+    new MC.Block(94, 'powered_repeater', false),
+    new MC.Block(95, 'stained_glass', true),
+    new MC.Block(96, 'trapdoor', false),
+    new MC.Block(97, 'monster_egg', false),
+    new MC.Block(98, 'stonebrick', true, true),
+    new MC.Block(101, 'iron_bars', false),
+    new MC.Block(102, 'glass_pane', false),
+    new MC.Block(103, 'melon_block', true),
+    new MC.Block(104, 'pumpkin_stem', false),
+    new MC.Block(105, 'melon_stem', false),
+    new MC.Block(106, 'vine', false),
+    new MC.Block(107, 'fence_gate', false),
+    new MC.Block(108, 'brick_stairs', false),
+    new MC.Block(109, 'stone_brick_stairs', false),
+    new MC.Block(110, 'mycelium', true, true),
+    new MC.Block(111, 'waterlily', false),
+    new MC.Block(112, 'nether_brick', true, true),
+    new MC.Block(113, 'nether_brick_fence', false),
+    new MC.Block(114, 'nether_brick_stairs', false),
+    new MC.Block(115, 'nether_wart', false),
+    new MC.Block(116, 'enchanting_table', false),
+    new MC.Block(117, 'brewing_stand', false, false, [
+      ['brewing_stand', 'has_bottle_0=false,has_bottle_1=false,has_bottle_2=true'],
+      ['brewing_stand', 'has_bottle_0=false,has_bottle_1=true,has_bottle_2=false'],
+      ['brewing_stand', 'has_bottle_0=false,has_bottle_1=true,has_bottle_2=true'],
+      ['brewing_stand', 'has_bottle_0=true,has_bottle_1=false,has_bottle_2=false'],
+      ['brewing_stand', 'has_bottle_0=true,has_bottle_1=false,has_bottle_2=true'],
+      ['brewing_stand', 'has_bottle_0=true,has_bottle_1=true,has_bottle_2=false'],
+      ['brewing_stand', 'has_bottle_0=true,has_bottle_1=true,has_bottle_2=true']]), // TODO: Confirm these are correct
+    new MC.Block(118, 'cauldron', false),
+    new MC.Block(119, 'end_portal', false),
+    new MC.Block(120, 'end_portal_frame', false),
+    new MC.Block(121, 'end_stone', true, true),
+    new MC.Block(122, 'dragon_egg', false),
+    new MC.Block(123, 'redstone_lamp', true, true),
+    new MC.Block(124, 'lit_redstone_lamp', true, true),
+    new MC.Block(125, 'double_wooden_slab', true, true),
+    new MC.Block(126, 'wooden_slab', false),
+    new MC.Block(127, 'cocoa', false),
+    new MC.Block(128, 'sandstone_stairs', false),
+    new MC.Block(129, 'emerald_ore', true, true),
+    new MC.Block(130, 'ender_chest', false),
+    new MC.Block(131, 'tripwire_hook', false),
+    new MC.Block(133, 'emerald_block', true, true),
+    new MC.Block(134, 'spruce_stairs', false),
+    new MC.Block(135, 'birch_stairs', false),
+    new MC.Block(136, 'jungle_stairs', false),
+    new MC.Block(137, 'command_block', true, true),
+    new MC.Block(138, 'beacon', true, true),
+    new MC.Block(139, 'cobblestone_wall', false),
+    new MC.Block(140, 'flower_pot', false),
+    new MC.Block(141, 'carrots', false),
+    new MC.Block(142, 'potatoes', false),
+    new MC.Block(143, 'wooden_button', false),
+    new MC.Block(144, 'skull', false),
+    new MC.Block(145, 'anvil', false),
+    new MC.Block(146, 'trapped_chest', false),
+    new MC.Block(147, 'light_weighted_pressure_plate', false),
+    new MC.Block(148, 'heavy_weighted_pressure_plate', false),
+    new MC.Block(149, 'unpowered_comparator', false),
+    new MC.Block(150, 'powered_comparator', false),
+    new MC.Block(151, 'daylight_detector', false),
+    new MC.Block(152, 'redstone_block', true, true),
+    new MC.Block(153, 'quartz_ore', true, true),
+    new MC.Block(154, 'hopper', false),
+    new MC.Block(155, 'quartz_block', true, true),
+    new MC.Block(156, 'quartz_stairs', false),
+    new MC.Block(157, 'activator_rail', false),
+    new MC.Block(158, 'dropper', false),
+    new MC.Block(159, 'stained_hardened_clay', true, true),
+    new MC.Block(160, 'stained_glass_pane', false),
+    new MC.Block(161, 'leaves2', true, false, [
+      'oak_leaves', 'spruce_leaves', , ,
+      'oak_leaves', 'spruce_leaves', , ,
+      'oak_leaves', 'spruce_leaves', , ,
+      'oak_leaves', 'spruce_leaves']),
+    new MC.Block(162, 'log2', true, true, [
+      ['acacia_log', 'axis=y'],    ['dark_oak_log', 'axis=y'],  , ,
+      ['acacia_log', 'axis=x'],    ['dark_oak_log', 'axis=x'],  , ,
+      ['acacia_log', 'axis=z'],    ['dark_oak_log', 'axis=z'],  , ,
+      ['acacia_log', 'axis=none'], ['dark_oak_log', 'axis=none']]),
+    new MC.Block(163, 'acacia_stairs', false),
+    new MC.Block(164, 'dark_oak_stairs', false),
+    new MC.Block(165, 'slime', true),
+    new MC.Block(166, 'barrier', true),
+    new MC.Block(167, 'iron_trapdoor', false),
+    new MC.Block(168, 'prismarine', true, true),
+    new MC.Block(169, 'sea_lantern', true, true),
+    new MC.Block(170, 'hay_block', true, true),
+    new MC.Block(171, 'carpet', false),
+    new MC.Block(172, 'hardened_clay', true, true),
+    new MC.Block(173, 'coal_block', true, true),
+    new MC.Block(174, 'packed_ice', true, true),
+    new MC.Block(175, 'double_plant', false),
+  ]);
 }) (self.MC || (MC = {}));

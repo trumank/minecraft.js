@@ -1,9 +1,5 @@
 MC = {shaders: {}, models: {}};
 MC.shaders.terrain = new THREE.ShaderMaterial({
-    attributes: {
-        color: {type: 'v3', value: null},
-        uv: {type: 'v2', value: null}
-    },
     uniforms: THREE.UniformsUtils.merge([
         THREE.ShaderLib['lambert'].uniforms,
         {
@@ -98,13 +94,11 @@ MC.shaders.terrain = new THREE.ShaderMaterial({
         '}'
     ].join('\n'),
     //lights: true,
-    //fog: true,
-    map: true,
+    fog: true,
     vertexColors: THREE.VertexColors
 });
 
 MC.shaders.terrain = new THREE.MeshLambertMaterial({
     vertexColors: THREE.VertexColors,
-    gammaOutput: true,
     alphaTest: 0.5
 });

@@ -29,7 +29,7 @@ function connect(host) {
 }
 
 function _onmessage(e) {
-  var options = {};
+  var options = {arrayBuffers: []};
   var packet = BSON.deserialize(new Uint8Array(e.data), options);
   self.postMessage({
     type: 'packet',
