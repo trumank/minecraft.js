@@ -1,6 +1,7 @@
 importScripts('../lib.js');
 
 var config;
+var chunks = new Map();
 
 var uvx = ['x1', 'x1', 'x2', 'x2'];
 var uvy = ['y1', 'y2', 'y2', 'y1'];
@@ -24,13 +25,27 @@ self.onmessage = function(msg) {
         }
       }
       break;
-    case 'build':
-      var mesh = build(data);
-      postMessage(['build', {
-        position: data.position,
-        mesh: mesh,
-        data: data.data
-      }, data.data.concat(mesh).map(a => a.buffer)]);
+    case 'chunk':
+      var p = data.position;
+      chunks.set(positionHash(p.x, p.y, p.z), data);
+      if (data.build) {
+        var mesh = build(data);
+        postMessage(['mesh', {
+          position: data.position,
+          mesh: mesh
+        }, mesh.map(a => a.buffer)]);
+        var coords = [{x:1,y:0,z:0},{x:-1,y:0,z:0},{x:0,y:1,z:0},{x:0,y:-1,z:0},{x:0,y:0,z:1},{x:0,y:0,z:-1}];
+        for (var c of coords) {
+          var str = positionHash(p.x + c.x, p.y + c.y, p.z + c.z);
+          var chunk = chunks.get(str);
+          if (chunk) {
+            chunks.delete(str);
+            postMessage(['chunk', chunk], chunk.data.map(a => a.buffer));
+          }
+        }
+        chunks.delete(positionHash(p.x, p.y, p.z));
+        postMessage(['chunk', data], data.data.map(a => a.buffer));
+      }
       break;
     default:
       throw new Error('Unkown message type', type);
@@ -93,15 +108,14 @@ function build(chunk) {
     },
     getBlock: function(x, y, z) {
       if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
-        // var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
-        // var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
-        // var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
-        // var c = chunks[positionHash(cx, cy, cz)];
-        // if (!c) {
-        //   return -1;
-        // }
-        // return c.blocks[mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE] >> 4;
-        return 0;
+        var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
+        var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
+        var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
+        var c = chunks.get(positionHash(cx, cy, cz));
+        if (!c) {
+          return 0;
+        }
+        return c.data[0][mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE];
       }
       // special case for this chunk for optimization
       return blocks[x + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE];
@@ -109,15 +123,14 @@ function build(chunk) {
     getProp: function(x, y, z, prop) {
       var arr;
       if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
-        // var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
-        // var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
-        // var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
-        // var c = chunks[positionHash(cx, cy, cz)];
-        // if (!c) {
-        //   return -1;
-        // }
-        // arr = c.data[prop];
-        return -1;
+        var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
+        var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
+        var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
+        var c = chunks.get(positionHash(cx, cy, cz));
+        if (!c) {
+          return -1;
+        }
+        arr = c.data[prop];
       } else {
         // special case for this chunk for optimization
         arr = chunk.data[prop];
@@ -134,22 +147,15 @@ function build(chunk) {
       return f.getProp(x, y, z, 2);
     },
     isBlockOpaque: function(x, y, z) {
-      var id = f.getBlock(x, y, z);
-      var block = MC.Blocks.getById(id);
-      if (block) {
-        return block.opaque; // TODO
-      } else if (id === -1) {
-        return true;
-      }
-      return false;
+      var block = MC.Blocks.getById(f.getBlock(x, y, z));
+      return block && block.opaque; // TODO
     }
   };
 
   for (var y = 0; y < config.CHUNK_SIZE; y++) {
     for (var z = 0; z < config.CHUNK_SIZE; z++) {
       for (var x = 0; x < config.CHUNK_SIZE; x++) {
-        var block = MC.Blocks.getById(blocks[x + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE]);
-        var c = (block && block.opaque);
+        var c = f.isBlockOpaque(x, y, z);
         culled[(x - 1) + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & x > 0) << 0;
         culled[(x + 1) + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & x < config.CHUNK_SIZE - 1) << 1;
         culled[x + z * config.CHUNK_SIZE + (y - 1) * config.CHUNK_SIZE * config.CHUNK_SIZE] |= (c & y > 0) << 2;
@@ -159,24 +165,24 @@ function build(chunk) {
       }
     }
   }
-  /*for (var x = 0; x < config.CHUNK_SIZE; x++) {
+  for (var x = 0; x < config.CHUNK_SIZE; x++) {
     for (var y = 0; y < config.CHUNK_SIZE; y++) {
-      culled[x + 0 * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 5;
-      culled[x + 15 * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 4;
+      culled[x + 0 * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= f.isBlockOpaque(x, y, -1) << 5;
+      culled[x + 15 * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= f.isBlockOpaque(x, y, 16) << 4;
     }
   }
   for (var x = 0; x < config.CHUNK_SIZE; x++) {
     for (var z = 0; z < config.CHUNK_SIZE; z++) {
-      culled[x + z * config.CHUNK_SIZE + 0 * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 3;
-      culled[x + z * config.CHUNK_SIZE + 15 * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 2;
+      culled[x + z * config.CHUNK_SIZE + 0 * config.CHUNK_SIZE * config.CHUNK_SIZE] |= f.isBlockOpaque(x, -1, z) << 3;
+      culled[x + z * config.CHUNK_SIZE + 15 * config.CHUNK_SIZE * config.CHUNK_SIZE] |= f.isBlockOpaque(x, 16, z) << 2;
     }
   }
   for (var y = 0; y < config.CHUNK_SIZE; y++) {
     for (var z = 0; z < config.CHUNK_SIZE; z++) {
-      culled[0 + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 1;
-      culled[15 + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= 1 << 0;
+      culled[0 + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= f.isBlockOpaque(-1, y, z) << 1;
+      culled[15 + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= f.isBlockOpaque(16, y, z) << 0;
     }
-  }*/
+  }
   // var ranges = {};
   var block, k = 0;
   for (var y = 0; y < config.CHUNK_SIZE; y++) {

@@ -517,12 +517,18 @@
     _onmessage(msg, worker) {
       var [type, data] = msg.data;
       switch (type) {
-        case 'build':
+        case 'chunk':
+          var p = data.position;
+          var chunk = this.getChunk(p.x, p.y, p.z);
+          if (chunk) {
+            chunk.setFromWorker(data.data);
+          }
+          break;
+        case 'mesh':
           var p = data.position;
           var chunk = this.getChunk(p.x, p.y, p.z);
           if (chunk) {
             chunk.setGeometryBuffer(data.mesh);
-            [chunk.transBlocks, chunk.transBlockLight, chunk.transSkyLight] = data.data;
           }
           worker[1]--;
           break;
@@ -552,7 +558,7 @@
     buildQueuedChunks() {
       for (var i = this.queuedChunks.length - 1; i >= 0; i--) {
         var chunk = this.queuedChunks[i];
-        if (chunk.isBuilding()) continue;
+        if (!chunk.readyToBuild()) continue;
         var least;
         var leastLoad = Infinity;
         for (var worker of this.workers) {
@@ -561,15 +567,11 @@
             least = worker;
           }
         }
-        var chunkData = [chunk.transBlocks, chunk.transBlockLight, chunk.transSkyLight];
-        least[0].postMessage(['build', {
-          data: chunkData,
-          position: {x: chunk.x, y: chunk.y, z: chunk.z},
-        }], chunkData.map(a => a.buffer));
+        for (var n of chunk.getSurroundingChunks()) {
+          n.sendToWorker(least[0], false);
+        }
+        chunk.sendToWorker(least[0], true);
         least[1]++;
-        chunk.transBlocks = null;
-        chunk.transBlockLight = null;
-        chunk.transSkyLight = null;
         this.queuedChunks.splice(i, 1);
       }
     }
@@ -790,8 +792,8 @@
 
     }
     load(x, y, z) {
+      var size = MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE;
       if (x === 0 && y === 0 && z === 0) {
-        var size = MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE;
         var chunk = {
           blocks: new Uint16Array(size),
           blockLight: new Uint8Array(size / 2),
@@ -810,7 +812,6 @@
         }
         return chunk;
       } else if (x === -1 && y === 0 && z === 0) {
-        var size = MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE;
         var chunk = {
           blocks: new Uint16Array(size),
           blockLight: new Uint8Array(size / 2),
@@ -822,7 +823,6 @@
         }
         return chunk;
       } else if (x === -2 && y === 0 && z === 0) {
-        var size = MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE;
         var chunk = {
           blocks: new Uint16Array(size),
           blockLight: new Uint8Array(size / 2),
@@ -840,6 +840,12 @@
           chunk.blockLight[i] = 0xff;
         }
         return chunk;
+      } else {
+        return {
+          blocks: new Uint16Array(size).fill(16),
+          blockLight: new Uint8Array(size / 2).fill(0x77),
+          skyLight: new Uint8Array(size / 2).fill(256),
+        };
       }
     }
   };

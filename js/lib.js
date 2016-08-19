@@ -70,35 +70,32 @@
       this.transBlockLight.set(this.blockLight);
       this.transSkyLight = new Uint8Array(this.skyLight.length);
       this.transSkyLight.set(this.skyLight);
-      this.queue = {};
+      this.intact = true; // false when trans data is in a worker
       this.buildMesh();
-      // var s = this.world.getSurroundingChunks(this.x, this.y, this.z);
-      // for (var i = 0; i < s.length; i++) {
-      //   s[i].buildMesh();
-      // }
-
-      this.functions = null;
+      for (var chunk of this.getSurroundingChunks()) {
+        chunk.buildMesh();
+      }
     }
     update(x, y, z) {
-      /*var c;
+      var c;
       if (x === 0 && (c = this.world.getChunk(this.x - 1, this.y, this.z)))
         c.buildMesh();
-      if (x === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x + 1, this.y, this.z)))
+      if (x === MC.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x + 1, this.y, this.z)))
         c.buildMesh();
       if (y === 0 && (c = this.world.getChunk(this.x, this.y - 1, this.z)))
         c.buildMesh();
-      if (y === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y + 1, this.z)))
+      if (y === MC.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y + 1, this.z)))
         c.buildMesh();
       if (z === 0 && (c = this.world.getChunk(this.x, this.y, this.z - 1)))
         c.buildMesh();
-      if (z === mc.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y, this.z + 1)))
-        c.buildMesh();*/
+      if (z === MC.CHUNK_SIZE - 1 && (c = this.world.getChunk(this.x, this.y, this.z + 1)))
+        c.buildMesh();
     }
     setBlock(x, y, z, id) {
       var index = x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE;
       this.blocks[index] = id;
 
-      if (this.isBuilding()) {
+      if (!this.intact) {
         if (!this.diff) {
           this.diff = Object.create(null);
         }
@@ -107,12 +104,16 @@
         this.transBlocks[index] = id;
       }
       this.buildMesh();
+      this.update(x, y, z);
     }
     getBlock(x, y, z) {
       if (x < 0 || x >= MC.CHUNK_SIZE || y < 0 || y > MC.CHUNK_SIZE || z < 0 || z >= MC.CHUNK_SIZE) {
         return -1;
       }
       return this.blocks[x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE];
+    }
+    getSurroundingChunks() {
+      return this.world.getSurroundingChunks(this.x, this.y, this.z);
     }
 
     isBlockSolid(x, y, z) {
@@ -133,8 +134,14 @@
       this.queued = true;
       this.world.queueChunk(this);
     }
-    isBuilding() {
-      return !(this.transBlocks && this.transBlocks.buffer);
+    readyToBuild() {
+      if (!this.intact) return false;
+      for (var chunk of this.getSurroundingChunks()) {
+        if (!chunk.intact) {
+          return false;
+        }
+      }
+      return true;
     }
     setGeometryBuffer(res) {
       //this.blockIndexes = res.blocks;
@@ -151,14 +158,28 @@
       this.mesh = mesh;
       this.world.updateGeometry(this);
       this.queued = false;
-      this.applyDiff();
       //this.functions = this.createFunctions();
     }
+    sendToWorker(worker, build) {
+      this.intact = false;
+      var data = [this.transBlocks, this.transBlockLight, this.transSkyLight];
+      worker.postMessage(['chunk', {
+        build: build,
+        data: data,
+        position: {x: this.x, y: this.y, z: this.z},
+      }], data.map(a => a.buffer));
+    }
+    setFromWorker(data) {
+      [this.transBlocks, this.transBlockLight, this.transSkyLight] = data;
+      this.intact = true;
+      this.applyDiff();
+    }
     applyDiff() {
-      if (this.diff && !this.isBuilding()) {
+      if (this.diff && !this.intact) {
         for (var i in this.diff) {
           this.transBlocks[i] = this.diff[i];
         }
+        this.diff = null;
         this.buildMesh();
       }
     }
@@ -192,6 +213,10 @@
       var variant = blockstate.variants[state];
       if (!variant) return; //console.warn('missing variant for ' + block.name);
       return Array.isArray(variant) ? variant : [variant];
+    }
+    isOpaque(id) {
+      var block = this.getById(id);
+      return block ? block.opaque : false;
     }
   }
 
