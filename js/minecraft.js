@@ -52,7 +52,7 @@
       loop();
     }
     loadResources(cb) {
-      var resources = new MC.ResourcePack(['/resourcepacks/resourcepack.zip', '/resourcepacks/testpack/testpack.zip']);
+      var resources = new MC.ResourcePack(['/resourcepacks/resourcepack.zip']);
       var l = 0;
       var i = setInterval(function() {
         this.gui.bar.style.width = l;
