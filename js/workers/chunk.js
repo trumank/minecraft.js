@@ -14,7 +14,7 @@ function mod(n1, n2) {
   return ((n1 % n2) + n2) % n2;
 }
 
-self.onmessage = function(msg) {
+self.onmessage = msg => {
   var [type, data] = msg.data;
   switch(type) {
     case 'configure':
@@ -63,7 +63,7 @@ function build(chunk) {
   var uvs = new MC.DynamicArray(Float32Array);
   var j = 0;
   var f = {
-    vertex: function(x, y, z, r, g, b, uvx, uvy) {
+    vertex: (x, y, z, r, g, b, uvx, uvy) => {
       positions.push(x);
       positions.push(y);
       positions.push(z);
@@ -81,7 +81,7 @@ function build(chunk) {
       uvs.push(uvy);
       return pi++;
     },
-    squade: function (ux1, uy1, ux2, uy2, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) {
+    squade: (ux1, uy1, ux2, uy2, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) => {
       var ac = s1 / 16;
       var a = f.vertex(x1, y1, z1, ac, ac, ac, ux1, uy1);
       var bc = s2 / 16;
@@ -106,7 +106,7 @@ function build(chunk) {
         indices.push(a);
       }
     },
-    getBlock: function(x, y, z) {
+    getBlock: (x, y, z) => {
       if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
         var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
         var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
@@ -120,7 +120,7 @@ function build(chunk) {
       // special case for this chunk for optimization
       return blocks[x + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE];
     },
-    getProp: function(x, y, z, prop) {
+    getProp: (x, y, z, prop) => {
       var arr;
       if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
         var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
@@ -138,15 +138,15 @@ function build(chunk) {
       var b = arr[(mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE) >> 1];
       return (x % 2 ? b >> 4 : b) & 0xf;
     },
-    getBlockLight: function (x, y, z) {
+    getBlockLight: (x, y, z) => {
       //return 10;
       //return f.getProp(x, y, z, 'blockLight');
       return f.getProp(x, y, z, 1);// | f.getProp(x, y, z, 'skyLight');
     },
-    getSkyLight: function (x, y, z) {
+    getSkyLight: (x, y, z) => {
       return f.getProp(x, y, z, 2);
     },
-    isBlockOpaque: function(x, y, z) {
+    isBlockOpaque: (x, y, z) => {
       var block = MC.Blocks.getById(f.getBlock(x, y, z));
       return block && block.opaque; // TODO
     }

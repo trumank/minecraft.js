@@ -158,7 +158,6 @@
       this.mesh = mesh;
       this.world.updateGeometry(this);
       this.queued = false;
-      //this.functions = this.createFunctions();
     }
     sendToWorker(worker, build) {
       this.intact = false;

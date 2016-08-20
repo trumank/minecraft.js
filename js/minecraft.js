@@ -2,13 +2,13 @@
   'use strict';
 
   MC.util = {
-    mod: function(n1, n2) {
+    mod: (n1, n2) => {
       return ((n1 % n2) + n2) % n2;
     },
-    clone: function(object) {
+    clone: (object) => {
       return JSON.parse(JSON.stringify(object));
     },
-    positionKey: function(x, y, z) {
+    positionKey: (x, y, z) => {
       return x + '_' + y + '_' + z;
     }
   };
@@ -21,51 +21,51 @@
       this.server = new MC.Server('ws://' + location.host);
       this.world = null;
 
-      this.resources = this.loadResources(function(err) {
+      this.resources = this.loadResources(err => {
         if (err) return console.err(err);
-        this.gui.signIn(function(err, session) {
+        this.gui.signIn((err, session) => {
           this.joinServer(server.host, server.port);
-        }.bind(this));
-        this.gui.offline(function(err) {
+        });
+        this.gui.offline(err => {
           this.joinServer(server.host, server.port);
-        }.bind(this));
-        this.gui.testWorld(function(err) {
+        });
+        this.gui.testWorld(err => {
           this.joinTestWorld();
-        }.bind(this));
-      }.bind(this));
-      this.server.on(['login', 'success'], function(packet) {
+        });
+      });
+      this.server.on(['login', 'success'], packet => {
         this.sendSettings();
-      }.bind(this));
-      this.server.on(['play', 'chat'], function(packet) { // TODO: Complete chat messages
+      });
+      this.server.on(['play', 'chat'], packet => { // TODO: Complete chat messages
         var obj = JSON.parse(packet.message);
         var msg = '';
         if (obj.translate) {
           msg = this.resources.language[obj.translate](obj.with);
         }
         this.chat.innerText += msg + '\n';
-      }.bind(this));
+      });
 
-      var loop = function() {
+      var loop = () => {
         requestAnimationFrame(loop);
         this.tick();
-      }.bind(this);
+      };
       loop();
     }
     loadResources(cb) {
       var resources = new MC.ResourcePack(['/resourcepacks/resourcepack.zip']);
       var l = 0;
-      var i = setInterval(function() {
+      var i = setInterval(() => {
         this.gui.bar.style.width = l;
-      }.bind(this), 1000);
-      resources.load(function(p) {
+      }, 1000);
+      resources.load(p => {
         l = p * 100 + '%';
-      }, function(err) {
+      }, err => {
         if (!err) {
           this.gui.loading.style.display = 'none';
         }
         clearInterval(i);
         cb(err);
-      }.bind(this));
+      });
       return resources;
     }
     joinServer(host, port) {
@@ -106,7 +106,7 @@
       });
       this.server.send(['play'], 'custom_payload', {
         channel: 'MC|Brand',
-        data: 'vanilla'.split('').map(function(s){return s.charCodeAt(0);})
+        data: 'vanilla'.split('').map(s => s.charCodeAt(0))
       });
       this.server.send(['play'], 'held_item_slot', {
         slotId: 2
@@ -134,15 +134,15 @@
       this.spawned = false;
       this.flying = true;
 
-      this.mc.gui.content.addEventListener('keypress', function(e) {
+      this.mc.gui.content.addEventListener('keypress', e => {
         switch (String.fromCharCode(e.keyCode)) {
         case 'f':
           this.flying = !this.flying;
           break;
         }
-      }.bind(this), false);
+      }, false);
 
-      this.mc.gui.content.addEventListener('click', function(e) {
+      this.mc.gui.content.addEventListener('click', e => {
         if (!this.mc.gui.isPointerLocked) {
           return;
         }
@@ -153,18 +153,9 @@
         } else if (e.button === 2) {
           this.placeBlock();
         }
-      }.bind(this));
+      });
 
-      this.mc.server.on(['play', 'position'], function(packet) {
-        this.spawned = true;
-        this.position.x = packet.x;
-        this.position.y = packet.y;
-        this.position.z = packet.z;
-        this.lon = packet.yaw + 90;
-        this.lat = -packet.pitch;
-      }.bind(this));
-
-      this.mc.gui.content.addEventListener('mousemove', function(e) {
+      this.mc.gui.content.addEventListener('mousemove', e => {
         if (this.mc.gui.isPointerLocked) {
           var zoomed = this.mc.gui.keysDown[17];
           var lookSpeed = zoomed ? 0.05 : 0.2;
@@ -174,7 +165,16 @@
           this.lat -= dy * lookSpeed;
           this.lat = THREE.Math.clamp(this.lat, -89.9, 89.9);
         }
-      }.bind(this), false);
+      }, false);
+
+      this.mc.server.on(['play', 'position'], packet => {
+        this.spawned = true;
+        this.position.x = packet.x;
+        this.position.y = packet.y;
+        this.position.z = packet.z;
+        this.lon = packet.yaw + 90;
+        this.lat = -packet.pitch;
+      });
     }
     tick() {
       var speed = this.flying ? this.flyingSpeed : this.walkingSpeed;
@@ -241,21 +241,18 @@
         this.sendUpdate();
       }
 
-      var chunks = this.mc.world.chunks;
       var cx = this.position.x / MC.CHUNK_SIZE - 0.5 | 0;
       var cy = this.position.y / MC.CHUNK_SIZE - 0.5 | 0;
       var cz = this.position.z / MC.CHUNK_SIZE - 0.5 | 0;
 
       var r = this.viewDistance;
-      var self = this;
-      Object.keys(chunks).forEach(function(c) {
-        var chunk = chunks[c];
+      for (var [key, chunk] of this.mc.world.chunks) {
         if ((chunk.x < cx - r - 1) || (chunk.x > cx + r) || (chunk.y < cy - r - 1) || (chunk.y > cy + r)  || (chunk.z < cz - r - 1) || (chunk.z > cz + r)) {
-          self.mc.world.unloadChunk(chunk.x, chunk.y, chunk.z);
+          this.mc.world.unloadChunk(chunk.x, chunk.y, chunk.z);
         } else {
           chunk.update();
         }
-      });
+      }
       for (var x = cx - r; x < cx + r; x++) {
         for (var y = cy - r; y < cy + r; y++) {
           for (var z = cz - r; z < cz + r; z++) {
@@ -499,17 +496,16 @@
   MC.World = class World {
     constructor(inst, loader, scene) {
       this.mc = inst;
-      this.chunks = {};
+      this.chunks = new Map();
       this.chunkLoader = loader;
       this.scene = scene;
       this.queuedChunks = [];
       this.workers = [];
-      var self = this;
       for (var i = 0; i < navigator.hardwareConcurrency; i++) {
         var worker = [new Worker('js/workers/chunk.js'), 0];
         this.mc.resources.configure(worker[0]);
-        worker[0].onmessage = function(msg) {
-          self._onmessage(msg, worker);
+        worker[0].onmessage = msg => {
+          this._onmessage(msg, worker);
         };
         this.workers.push(worker);
       }
@@ -548,7 +544,7 @@
       if (mesh) {
         this.scene.remove(mesh);
       }
-      delete this.chunks[MC.util.positionKey(x, y, z)];
+      this.chunks.delete(MC.util.positionKey(x, y, z));
     }
     queueChunk(chunk) {
       this.queuedChunks.push(chunk);
@@ -574,18 +570,17 @@
       }
     }
     rebuildDirty() {
-      for (var key of Object.keys(this.chunks)) {
-        var chunk = this.chunks(key);
+      for (var [key, chunk] of this.chunks) {
         if (chunk.dirty) {
           chunk.buildMesh();
         }
       }
     }
     getChunk(x, y, z) {
-      return this.chunks[MC.util.positionKey(x, y, z)];
+      return this.chunks.get(MC.util.positionKey(x, y, z));
     }
     setChunk(x, y, z, chunk) {
-      this.chunks[MC.util.positionKey(x, y, z)] = chunk;
+      this.chunks.set(MC.util.positionKey(x, y, z), chunk);
     }
     getChunkContainingBlock(x, y, z) {
       return this.getChunk(x >> 4, y >> 4, z >> 4);
@@ -601,40 +596,13 @@
       }
       return chunks;
     }
-    filterChunks(filter) {
-      var chunks = [];
-      for (var c in this.chunks) {
-        if (filter(this.chunks[c])) {
-          chunks.push(this.chunks[c]);
-        }
-      }
-      return chunks;
-    }
-    setBloc(x, y, z, id, meta) {
+    setBlock(x, y, z, id) {
       var mx = MC.util.mod(x, MC.CHUNK_SIZE);
       var my = MC.util.mod(y, MC.CHUNK_SIZE);
       var mz = MC.util.mod(z, MC.CHUNK_SIZE);
       var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
       if (chunk) {
-        chunk.setBloc(mx, my, mz, id, meta);
-      }
-    }
-    setBlock(x, y, z, id, meta) {
-      var mx = MC.util.mod(x, MC.CHUNK_SIZE);
-      var my = MC.util.mod(y, MC.CHUNK_SIZE);
-      var mz = MC.util.mod(z, MC.CHUNK_SIZE);
-      var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
-      if (chunk) {
-        chunk.setBlock(mx, my, mz, id, meta);
-      }
-    }
-    setMeta(x, y, z, id) {
-      var mx = MC.util.mod(x, MC.CHUNK_SIZE);
-      var my = MC.util.mod(y, MC.CHUNK_SIZE);
-      var mz = MC.util.mod(z, MC.CHUNK_SIZE);
-      var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
-      if (chunk) {
-        chunk.setMeta(mx, my, mz, id);
+        chunk.setBlock(mx, my, mz, id);
       }
     }
     getBlock(x, y, z) {
@@ -644,16 +612,8 @@
       var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
       return chunk ? chunk.getBlock(mx, my, mz) : 0;
     }
-    getMeta(x, y, z) {
-      var mx = MC.util.mod(x, MC.CHUNK_SIZE);
-      var my = MC.util.mod(y, MC.CHUNK_SIZE);
-      var mz = MC.util.mod(z, MC.CHUNK_SIZE);
-      var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
-      return chunk ? chunk.getMeta(mx, my, mz) : 0;
-    }
     getModel(x, y, z) {
-      var id = this.getBlock(x, y, z);
-      return MC.Blocks.getModel(this.mc.resources, id, 0);
+      return MC.Blocks.getModel(this.mc.resources, this.getBlock(x, y, z), 0);
     }
     getBlockState(x, y, z) {
       var id = this.getBlock(x, y, z);
@@ -673,7 +633,7 @@
       if (!model) {
         return [];
       }
-      return model[0].model.elements.map(function(element) {
+      return model[0].model.elements.map(element => {
         var b = new THREE.Box3(new THREE.Vector3(x + element.from.x, y + element.from.y, z + element.from.z), new THREE.Vector3(x + element.to.x, y + element.to.y, z + element.to.z));
         b.position = new THREE.Vector3(x, y, z);
         return b;
@@ -708,74 +668,73 @@
     constructor(server) {
       this.chunks = {};
       this.server = server;
-      var self = this;
-      this.server.on(['play', 'block_change'], function(packet) {
-        //self.world.setBlock(packet.x, packet.y, packet.z, packet.type, packet.metapacket);
+      this.server.on(['play', 'block_change'], packet => {
+        //this.world.setBlock(packet.x, packet.y, packet.z, packet.type, packet.metapacket);
       });
-      this.server.on(['play', 'map_chunk'], function(packet) {
+      this.server.on(['play', 'map_chunk'], packet => {
         var stream = new Streams.ReadStream(packet.chunkData.buffer.buffer);
         var l = MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE;
         var chunks = {};
         var y;
-        for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+        for (y = 0; y < this.COLUMN_HEIGHT; y++) {
           if (packet.bitMap & (1 << y)) {
             chunks[y] = {};
           }
         }
-        for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+        for (y = 0; y < this.COLUMN_HEIGHT; y++) {
           if (packet.bitMap & (1 << y)) {
             chunks[y].blocks = new Uint16Array(stream.arrayBuffer(l * 2));
           }
         }
-        for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+        for (y = 0; y < this.COLUMN_HEIGHT; y++) {
           if (packet.bitMap & (1 << y)) {
             chunks[y].blockLight = new Uint8Array(stream.arrayBuffer(l / 2));
           }
         }
-        for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+        for (y = 0; y < this.COLUMN_HEIGHT; y++) {
           if (packet.bitMap & (1 << y)) {
             chunks[y].skyLight = new Uint8Array(stream.arrayBuffer(l / 2));
           }
         }
-        for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+        for (y = 0; y < this.COLUMN_HEIGHT; y++) {
           if (packet.bitMap & (1 << y)) {
-            self.chunks[packet.x + '_' + y + '_' + packet.z] = chunks[y];
+            this.chunks[packet.x + '_' + y + '_' + packet.z] = chunks[y];
           }
         }
       });
-      this.server.on(['play', 'map_chunk_bulk'], function(packet) {
+      this.server.on(['play', 'map_chunk_bulk'], packet => {
         var stream = new Streams.ReadStream(packet.data.buffer.buffer);
         var l = MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE;
-        packet.meta.forEach(function(d) {
+        for (var d of packet.meta) {
           var chunks = {};
           var y;
-          for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+          for (y = 0; y < this.COLUMN_HEIGHT; y++) {
             if (d.bitMap & (1 << y)) {
               chunks[y] = {};
             }
           }
-          for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+          for (y = 0; y < this.COLUMN_HEIGHT; y++) {
             if (d.bitMap & (1 << y)) {
               chunks[y].blocks = new Uint16Array(stream.arrayBuffer(l * 2));
             }
           }
-          for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+          for (y = 0; y < this.COLUMN_HEIGHT; y++) {
             if (d.bitMap & (1 << y)) {
               chunks[y].blockLight = new Uint8Array(stream.arrayBuffer(l / 2));
             }
           }
-          for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+          for (y = 0; y < this.COLUMN_HEIGHT; y++) {
             if (d.bitMap & (1 << y)) {
               chunks[y].skyLight = new Uint8Array(stream.arrayBuffer(l / 2));
             }
           }
-          for (y = 0; y < self.COLUMN_HEIGHT; y++) {
+          for (y = 0; y < this.COLUMN_HEIGHT; y++) {
             if (d.bitMap & (1 << y)) {
-              self.chunks[d.x + '_' + y + '_' + d.z] = chunks[y];
+              this.chunks[d.x + '_' + y + '_' + d.z] = chunks[y];
             }
           }
           stream.arrayBuffer(MC.CHUNK_SIZE * MC.CHUNK_SIZE); // ignore biomes
-        });
+        }
       });
     }
     load(x, y, z) {
@@ -930,22 +889,22 @@
     }
     configurePointerLock() {
       this.isPointerLocked = false;
-      var pointerLockChange = function() {
+      var pointerLockChange = () => {
         this.isPointerLocked = this.content === (document.pointerLockElement || document.mozPointerLockElement);
-      }.bind(this);
+      };
       document.addEventListener('pointerlockchange', pointerLockChange);
       document.addEventListener('mozpointerlockchange', pointerLockChange);
 
-      var pointerLockError = function() {
+      var pointerLockError = () => {
         this.isPointerLocked = false;
-      }.bind(this);
+      };
       document.addEventListener('pointerlockerror', pointerLockError);
       document.addEventListener('mozpointerlockerror', pointerLockError);
 
       this.content.requestPointerLock = this.content.requestPointerLock || this.content.mozRequestPointerLock;
-      this.canvas.addEventListener('click', function(e) { // TODO: tweak when pointer lock activates
+      this.canvas.addEventListener('click', e => { // TODO: tweak when pointer lock activates
         this.content.requestPointerLock();
-      }.bind(this));
+      });
     }
     buildRenderer() {
       this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
@@ -1045,13 +1004,13 @@
 
       this.content.appendChild(this.overlay);
 
-      this.content.addEventListener('keydown', function(e) {
+      this.content.addEventListener('keydown', e => {
         this.keysDown[e.keyCode] = true;
-      }.bind(this), false);
+      }, false);
 
-      this.content.addEventListener('keyup', function(e) {
+      this.content.addEventListener('keyup', e => {
         this.keysDown[e.keyCode] = false;
-      }.bind(this), false);
+      }, false);
 
       this.content.addEventListener('blur', e => {
         for (var i = 0; i < 256; i++) {
@@ -1067,7 +1026,7 @@
       this.content.appendChild(this.stats.domElement);
     }
     signIn(cb) {
-      this.mc.server.once('session', function(data) {
+      this.mc.server.once('session', data => {
         if (data.err) {
           return console.log(data.err);
         }
@@ -1076,40 +1035,40 @@
         this.overlay.style.display = 'none';
         localStorage.session = JSON.stringify(session);
         cb(null, session);
-      }.bind(this));
+      });
       var session;
       if (localStorage.session && (session = JSON.parse(localStorage.session))) {
         this.mc.server.send('refresh', session);
       } else {
         this.auth.style.display = 'block';
         this.username.focus();
-        var click = function() {
+        var click = () => {
           var cred = {
             username: this.username.value,
             password: this.password.value
           };
           localStorage.credentials = JSON.stringify(cred);
           this.mc.server.send('authenticate', cred);
-        }.bind(this);
+        };
         this.buttonSignIn.addEventListener('click', click);
       }
     }
     offline(cb) {
-      this.buttonOffline.addEventListener('click', function() {
+      this.buttonOffline.addEventListener('click', () => {
         this.overlay.style.display = 'none';
         cb(null);
-      }.bind(this));
+      });
     }
     testWorld(cb) {
-      this.buttonTest.addEventListener('click', function() {
+      this.buttonTest.addEventListener('click', () => {
         this.overlay.style.display = 'none';
         cb(null);
-      }.bind(this));
+      });
     }
   };
 
   MC.nbt = {
-    read: function(data) {
+    read: data => {
       var stream = new Streams.ReadStream(new Uint8Array(data).buffer);
       
       var id = stream.uint8();
@@ -1119,25 +1078,25 @@
     
     tags: {
       read: {
-        1: function(stream) {
+        1: stream => {
           return stream.int8();
         },
-        2: function(stream) {
+        2: stream => {
           return stream.int16();
         },
-        3: function(stream) {
+        3: stream => {
           return stream.int32();
         },
-        4: function(stream) {
+        4: stream => {
           return stream.int64();
         },
-        5: function(stream) {
+        5: stream => {
           return stream.float32();
         },
-        6: function(stream) {
+        6: stream => {
           return stream.float64();
         },
-        7: function(stream) {
+        7: stream => {
           var size = stream.int32();
           var array = new Uint8Array(size);
           for (var i = 0; i < size; ++i) {
@@ -1145,10 +1104,10 @@
           }
           return array;
         },
-        8: function(stream) {
+        8: stream => {
           return stream.utf8(stream.uint16());
         },
-        9: function(stream) {
+        9: stream => {
           var id = stream.uint8();
           var size = stream.uint32();
           var array = [];
@@ -1157,7 +1116,7 @@
           }
           return array;
         },
-        10: function(stream) {
+        10: stream => {
           var obj = {};
           while (true) {
             var id = stream.uint8();
@@ -1170,7 +1129,7 @@
           }
           return obj;
         },
-        11: function(stream) {
+        11: stream => {
           var size = stream.int32();
           var array = new Uint32Array(size);
           for (var i = 0; i < size; ++i) {
@@ -1197,7 +1156,7 @@
   MC.ResourcePack = class ResourcePack {
     constructor(paths) {
       this.paths = paths;
-      this.assets = {};
+      this.assets = new Map();
       this.terrain = null;
       this.textures = {};
       this.materials = {};
@@ -1218,52 +1177,50 @@
       this.materials.terrain = MC.shaders.terrain;
     }
     load(progress, cb) {
-      var self = this;
-      this.loadAssets(progress, function(err) {
+      this.loadAssets(progress, err => {
         if (err) return cb(err);
-        self.loaded();
+        this.loaded();
         cb();
       });
     }
     loadAssets(progress, cb) {
-      var self = this;
-      async.eachSeries(this.paths, function(path, cb) {
-        zip.createReader(new zip.HttpReader(path), function(reader) {
-          reader.getEntries(function(entries) {
-            var assets = entries.filter(function(entry) {
+      async.eachSeries(this.paths, (path, cb) => {
+        zip.createReader(new zip.HttpReader(path), reader => {
+          reader.getEntries(entries => {
+            var assets = entries.filter(entry => {
               return /\.(png|json|lang)$/.test(entry.filename);
             });
             var i = 0;
-            async.eachLimit(assets, 10, function(entry, cb) {
+            async.eachLimit(assets, 10, (entry, cb) => {
               var name = entry.filename;
               if (/\.png$/.test(entry.filename)) {
-                entry.getData(new zip.BlobWriter('image/png'), function(blob) {
+                entry.getData(new zip.BlobWriter('image/png'), blob => {
                   var img = new Image();
-                  self.assets[name] = img;
-                  img.onload = function() {
+                  this.assets.set(name, img);
+                  img.onload = () => {
                     progress(++i / assets.length);
                     cb();
                   };
                   img.src = URL.createObjectURL(blob);
                 });
               } else if (/\.json$/.test(entry.filename)) {
-                entry.getData(new zip.TextWriter(), function(json) {
-                  self.assets[name] = JSON.parse(json);
+                entry.getData(new zip.TextWriter(), json => {
+                  this.assets.set(name, JSON.parse(json));
                   progress(++i / assets.length);
                   cb();
                 });
               } else if (/\.lang$/.test(entry.filename)) {
-                entry.getData(new zip.TextWriter(), function(text) {
-                  var translations = self.assets[name] = {};
-                  (text.match(/[^\n\r]+/g) || []).forEach(function(l) {
+                entry.getData(new zip.TextWriter(), text => {
+                  var translations = this.assets.set(name, {});
+                  for (var l of (text.match(/[^\n\r]+/g) || [])) {
                     var m = l.match(/^([^=]+)=(.*)$/);
                     if (!m) return;
-                    var i = 0;
-                    translations[m[1]] = new Function('a', 'return "' + JSON.stringify(m[2]).slice(1, -1).replace(/(.?)%(.)/g, function(m, b, t) {
+                    var j = 0;
+                    translations[m[1]] = new Function('a', 'return "' + JSON.stringify(m[2]).slice(1, -1).replace(/(.?)%(.)/g, (m, b, t) => {
                       if (b === '%' || b === '') return m;
-                      return b + '" + a[' + i++ + '] + "';
+                      return b + '" + a[' + j++ + '] + "';
                     }) + '"');
-                  });
+                  }
                   progress(++i / assets.length);
                   cb();
                 });
@@ -1280,7 +1237,7 @@
       this.buildModels();
       this.buildBlockStates();
       this.createResouces();
-      this.language = this.assets['assets/minecraft/lang/en_US.lang']; // TODO: Configure
+      this.language = this.assets.get('assets/minecraft/lang/en_US.lang'); // TODO: Configure
       this.buildMeshingFunctions();
     }
     buildMeshingFunctions() {
@@ -1422,26 +1379,26 @@
       this.builderConfig.meshingFunctions = this.meshingFunctions = models;
     }
     buildModels() {
-      var self = this;
       var models = {};
       var regex = /^assets\/([^\/]*)\/models\/(block\/.*)\.json$/;
-      Object.keys(this.assets).filter(function(n) {
-        return regex.test(n);
-      }).forEach(function(n) {
-        var m = n.match(regex);
-        if (!models[m[1]]) {
-          models[m[1]] = {};
+      for (var [n, asset] of this.assets) {
+        if (regex.test(n)) {
+          var m = n.match(regex);
+          if (!models[m[1]]) {
+            models[m[1]] = {};
+          }
+          models[m[1] + ':' + m[2]] = asset;
         }
-        models[m[1] + ':' + m[2]] = self.assets[n];
-      });
+      }
 
-      Object.keys(models).forEach(function(name) {
+      for (var name of Object.keys(models)) {
         var model = models[name];
-        if (!model.parent) return;
-        var parent = model.parent;
-        if (!~parent.indexOf(':')) parent = 'minecraft:' + parent;
-        model.parent = models[parent];
-      });
+        if (model.parent) {
+          var parent = model.parent;
+          if (!~parent.indexOf(':')) parent = 'minecraft:' + parent;
+          model.parent = models[parent];
+        }
+      }
 
       function collect(model) {
         var parent = model.parent ? collect(model.parent) : {
@@ -1453,9 +1410,9 @@
           parent.elements = parent.elements.concat(JSON.parse(JSON.stringify(model.elements)));
         }
         if (model.textures) {
-          Object.keys(model.textures).forEach(function(key) {
+          for (var key of Object.keys(model.textures)) {
             parent.textures[key] = JSON.parse(JSON.stringify(model.textures[key]));
-          });
+          }
         }
         parent.ambientocclusion = typeof model.ambientocclusion === 'undefined' ? true : model.ambientocclusion;
         return parent;
@@ -1468,20 +1425,20 @@
         return name;
       }
 
-      Object.keys(models).forEach(function(name) {
+      for (var name of Object.keys(models)) {
         var model = models[name];
         var vars = collect(model);
         var textures = vars.textures;
         var elements = vars.elements;
-        elements.forEach(function(element) {
+        for (var element of elements) {
           var fr = element.from;
           element.from = {x: fr[0] / 16, y: fr[1] / 16, z: fr[2] / 16};
           var to = element.to;
           element.to = {x: to[0] / 16, y: to[1] / 16, z: to[2] / 16};
           var faces = element.faces || element.faceData;
-          Object.keys(faces).forEach(function(dir) {
+          for (var dir of Object.keys(faces)) {
             var face = faces[dir];
-            var texture = self.terrainRects['minecraft:' + resolve(textures, face.texture)];
+            var texture = this.terrainRects['minecraft:' + resolve(textures, face.texture)];
             delete face.texture;
             if (!texture) {
               texture = {x1: 0, y1: 0, x2: 1, y2: 1};
@@ -1524,70 +1481,65 @@
               x2: texture.x1 + w * face.uv[0],
               y2: texture.y1 + h * (1 - face.uv[1]),
             };
-          });
-        });
+          }
+        }
         delete vars.textures;
         models[name] = vars;
-      });
+      }
 
       this.models = models;
     }
     buildBlockStates() {
-      var self = this;
-      var blockStates = {};
+      this.blockStates = {};
       var regex = /^assets\/([^\/]*)\/blockstates\/(.*)\.json$/;
-      Object.keys(this.assets).filter(function(n) {
-        return regex.test(n);
-      }).forEach(function(n) {
-        var m = n.match(regex);
-        if (!blockStates[m[1]]) {
-          blockStates[m[1]] = {};
-        }
-        var blockState = blockStates[m[1] + ':' + m[2]] = self.assets[n];
-        if (blockState.variants) {
-          for (var name of Object.keys(blockState.variants)) {
-            if (Array.isArray(blockState.variants[name])) {
-              var array = blockState.variants[name];
-              for (var variant of array) {
+      for (var [key, asset] of this.assets) {
+        if (regex.test(key)) {
+          var m = key.match(regex);
+          if (!this.blockStates[m[1]]) {
+            this.blockStates[m[1]] = {};
+          }
+          var blockState = this.blockStates[m[1] + ':' + m[2]] = asset;
+          if (blockState.variants) {
+            for (var name of Object.keys(blockState.variants)) {
+              if (Array.isArray(blockState.variants[name])) {
+                var array = blockState.variants[name];
+                for (var variant of array) {
+                  variant.x = variant.x || 0;
+                  variant.y = variant.y || 0;
+                  variant.model = this.models[m[1] + ':block/' + variant.model];
+                }
+              } else {
+                var variant = blockState.variants[name];
                 variant.x = variant.x || 0;
                 variant.y = variant.y || 0;
-                variant.model = self.models[m[1] + ':block/' + variant.model];
+                variant.model = this.models[m[1] + ':block/' + variant.model];
               }
-            } else {
-              var variant = blockState.variants[name];
-              variant.x = variant.x || 0;
-              variant.y = variant.y || 0;
-              variant.model = self.models[m[1] + ':block/' + variant.model];
-            }
-          } 
-        } else if(blockState.multipart) {
-          // TODO: Minecraft 1.10 has multipart tag
+            } 
+          } else if(blockState.multipart) {
+            // TODO: Minecraft 1.10 has multipart tag
+          }
         }
-      });
-      this.blockStates = blockStates;
+      }
     }
     buildTerrain() {
-      var self = this;
       var regex = /^assets\/([^\/]*)\/textures\/(blocks\/.*)\.png$/;
-      var blocks = Object.keys(this.assets).filter(function(n) {
-        return regex.test(n);
-      }).map(function(n) {
-        var m = n.match(regex);
-        var name = m[1] + ':' + m[2];
-        return {
-          name: name,
-          asset: self.assets[n]
-        };
-      });
-      blocks.sort(function(a, b) {
-        return b.asset.height - a.asset.height;
-      });
-
       var maxWidth = 0;
       var maxHeight = 0;
-      blocks.forEach(function(b) {
-        maxWidth = Math.max(b.asset.width, maxWidth);
-        maxHeight = Math.max(b.asset.height, maxHeight);
+      var blocks = [];
+      for (var [key, asset] of this.assets) {
+        if (regex.test(key)) {
+          var m = key.match(regex);
+          var name = m[1] + ':' + m[2];
+          maxWidth = Math.max(asset.width, maxWidth);
+          maxHeight = Math.max(asset.height, maxHeight);
+          blocks.push({
+            name: name,
+            asset: asset
+          });
+        }
+      }
+      blocks.sort((a, b) => {
+        return b.asset.height - a.asset.height;
       });
 
       var max = Math.max(maxWidth, maxHeight);
@@ -1644,13 +1596,13 @@
           return insert(node.a, block);
         }
       }
-      blocks.forEach(function(block) {
+      for (var block of blocks) {
         var node = insert(root, block);
         if (!node) {
           throw new Error('Could not fit texture.');
         }
         node.block = block;
-      });
+      }
 
       var positions = {};
       function find(node) {
