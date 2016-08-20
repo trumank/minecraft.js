@@ -135,7 +135,7 @@
       this.flying = true;
 
       this.mc.gui.content.addEventListener('keypress', e => {
-        switch (String.fromCharCode(e.keyCode)) {
+        switch (e.key) {
         case 'f':
           this.flying = !this.flying;
           break;
