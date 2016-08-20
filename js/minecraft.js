@@ -344,11 +344,11 @@
           min.axis = -1;
         }
       }
-    };
+    }
     getBoundingBox() {
       var p = this.position;
       return new THREE.Box3(new THREE.Vector3(p.x - 0.3, p.y - 1.62, p.z - 0.3), new THREE.Vector3(p.x + 0.3, p.y + 0.3, p.z + 0.3));
-    };
+    }
     updateSelection() {
       var r = 5;
       var boxes = [];
@@ -380,7 +380,7 @@
         this.selected = null;
         this.selectedFace = null;
       }
-    };
+    }
     testBox(box) {
       var dirfrac = new THREE.Vector3(1 / this.facing.x, 1 / this.facing.y, 1 / this.facing.z);
       var org = this.position;
@@ -401,7 +401,7 @@
         return false;
       }
       return tmin;
-    };
+    }
     findSelectedFace(box) {
       var b = box.translate(this.position.clone().negate());
       var f = this.facing;
@@ -459,28 +459,28 @@
         }
       }
       return f;
-    };
+    }
     getChunk() {
       return this.mc.world.getChunk(this.position.x / MC.CHUNK_SIZE | 0, this.position.y / MC.CHUNK_SIZE | 0, this.position.z / MC.CHUNK_SIZE | 0);
-    };
+    }
     breakBlock() {
       var p = this.selected;
       if (p) {
         this.mc.world.setBlock(p.x, p.y, p.z, 0);
       }
-    };
+    }
     pickBlock() {
       var p = this.selected;
       if (p) {
         this.heldItem = this.mc.world.getBlock(p.x, p.y, p.z);
       }
-    };
+    }
     placeBlock() {
       if (this.selected) {
         var p = this.selected.clone().add(this.selectedFace);
         this.mc.world.setBlock(p.x, p.y, p.z, this.heldItem);
       }
-    };
+    }
     sendUpdate() {
       this.mc.server.emit('play 06', {
         x: this.position.x,
@@ -491,7 +491,7 @@
         onGround: this.onGround,
         stance: this.position.y - 1.62
       });
-    };
+    }
   };
 
   MC.CHUNK_SIZE = 16;
@@ -508,25 +508,23 @@
       for (var i = 0; i < navigator.hardwareConcurrency; i++) {
         var worker = [new Worker('js/workers/chunk.js'), 0];
         this.mc.resources.configure(worker[0]);
-        worker[0].onmessage = function (msg) {
+        worker[0].onmessage = function(msg) {
           self._onmessage(msg, worker);
         };
-        this.workers.push(worker)
+        this.workers.push(worker);
       }
     }
     _onmessage(msg, worker) {
       var [type, data] = msg.data;
+      var p = data.position;
+      var chunk = this.getChunk(p.x, p.y, p.z);
       switch (type) {
         case 'chunk':
-          var p = data.position;
-          var chunk = this.getChunk(p.x, p.y, p.z);
           if (chunk) {
             chunk.setFromWorker(data.data);
           }
           break;
         case 'mesh':
-          var p = data.position;
-          var chunk = this.getChunk(p.x, p.y, p.z);
           if (chunk) {
             chunk.setGeometryBuffer(data.mesh);
           }
@@ -693,7 +691,7 @@
       var mz = MC.util.mod(z, MC.CHUNK_SIZE);
       var chunk = this.getChunk((x - mx) >> 4, (y - my) >> 4, (z - mz) >> 4);
       return chunk ? chunk.isBlockSolid(mx, my, mz) : 0;
-    };
+    }
     updateGeometry(chunk) {
       if (chunk.oldMesh)
         this.scene.remove(chunk.oldMesh);
@@ -1293,41 +1291,41 @@
 
         var str = '';
 
-        str += '  var lPPP = fn.getBlockLight(x + 1, y + 1, z + 1);\n'
-        str += '  var lPPC = fn.getBlockLight(x + 1, y + 1, z    );\n'
-        str += '  var lPPM = fn.getBlockLight(x + 1, y + 1, z - 1);\n'
-        str += '  var lPCP = fn.getBlockLight(x + 1, y    , z + 1);\n'
-        str += '  var lPCC = fn.getBlockLight(x + 1, y    , z    );\n'
-        str += '  var lPCM = fn.getBlockLight(x + 1, y    , z - 1);\n'
-        str += '  var lPMP = fn.getBlockLight(x + 1, y - 1, z + 1);\n'
-        str += '  var lPMC = fn.getBlockLight(x + 1, y - 1, z    );\n'
-        str += '  var lPMM = fn.getBlockLight(x + 1, y - 1, z - 1);\n'
-        str += '  var lCPP = fn.getBlockLight(x    , y + 1, z + 1);\n'
-        str += '  var lCPC = fn.getBlockLight(x    , y + 1, z    );\n'
-        str += '  var lCPM = fn.getBlockLight(x    , y + 1, z - 1);\n'
-        str += '  var lCCP = fn.getBlockLight(x    , y    , z + 1);\n'
-        str += '  var lCCM = fn.getBlockLight(x    , y    , z - 1);\n'
-        str += '  var lCMP = fn.getBlockLight(x    , y - 1, z + 1);\n'
-        str += '  var lCMC = fn.getBlockLight(x    , y - 1, z    );\n'
-        str += '  var lCMM = fn.getBlockLight(x    , y - 1, z - 1);\n'
-        str += '  var lMPP = fn.getBlockLight(x - 1, y + 1, z + 1);\n'
-        str += '  var lMPC = fn.getBlockLight(x - 1, y + 1, z    );\n'
-        str += '  var lMPM = fn.getBlockLight(x - 1, y + 1, z - 1);\n'
-        str += '  var lMCP = fn.getBlockLight(x - 1, y    , z + 1);\n'
-        str += '  var lMCC = fn.getBlockLight(x - 1, y    , z    );\n'
-        str += '  var lMCM = fn.getBlockLight(x - 1, y    , z - 1);\n'
-        str += '  var lMMP = fn.getBlockLight(x - 1, y - 1, z + 1);\n'
-        str += '  var lMMC = fn.getBlockLight(x - 1, y - 1, z    );\n'
-        str += '  var lMMM = fn.getBlockLight(x - 1, y - 1, z - 1);\n'
+        str += '  var lPPP = fn.getBlockLight(x + 1, y + 1, z + 1);\n';
+        str += '  var lPPC = fn.getBlockLight(x + 1, y + 1, z    );\n';
+        str += '  var lPPM = fn.getBlockLight(x + 1, y + 1, z - 1);\n';
+        str += '  var lPCP = fn.getBlockLight(x + 1, y    , z + 1);\n';
+        str += '  var lPCC = fn.getBlockLight(x + 1, y    , z    );\n';
+        str += '  var lPCM = fn.getBlockLight(x + 1, y    , z - 1);\n';
+        str += '  var lPMP = fn.getBlockLight(x + 1, y - 1, z + 1);\n';
+        str += '  var lPMC = fn.getBlockLight(x + 1, y - 1, z    );\n';
+        str += '  var lPMM = fn.getBlockLight(x + 1, y - 1, z - 1);\n';
+        str += '  var lCPP = fn.getBlockLight(x    , y + 1, z + 1);\n';
+        str += '  var lCPC = fn.getBlockLight(x    , y + 1, z    );\n';
+        str += '  var lCPM = fn.getBlockLight(x    , y + 1, z - 1);\n';
+        str += '  var lCCP = fn.getBlockLight(x    , y    , z + 1);\n';
+        str += '  var lCCM = fn.getBlockLight(x    , y    , z - 1);\n';
+        str += '  var lCMP = fn.getBlockLight(x    , y - 1, z + 1);\n';
+        str += '  var lCMC = fn.getBlockLight(x    , y - 1, z    );\n';
+        str += '  var lCMM = fn.getBlockLight(x    , y - 1, z - 1);\n';
+        str += '  var lMPP = fn.getBlockLight(x - 1, y + 1, z + 1);\n';
+        str += '  var lMPC = fn.getBlockLight(x - 1, y + 1, z    );\n';
+        str += '  var lMPM = fn.getBlockLight(x - 1, y + 1, z - 1);\n';
+        str += '  var lMCP = fn.getBlockLight(x - 1, y    , z + 1);\n';
+        str += '  var lMCC = fn.getBlockLight(x - 1, y    , z    );\n';
+        str += '  var lMCM = fn.getBlockLight(x - 1, y    , z - 1);\n';
+        str += '  var lMMP = fn.getBlockLight(x - 1, y - 1, z + 1);\n';
+        str += '  var lMMC = fn.getBlockLight(x - 1, y - 1, z    );\n';
+        str += '  var lMMM = fn.getBlockLight(x - 1, y - 1, z - 1);\n';
 
-        str += '\n'
+        str += '\n';
 
         var totalWeight = 0;
         for (var variant of variants) {
           totalWeight += variant.weight || 1;
         }
 
-        str += '  var n = Math.random() * ' + totalWeight + ';\n\n'
+        str += '  var n = Math.random() * ' + totalWeight + ';\n\n';
 
         var w = 0;
 
@@ -1351,7 +1349,7 @@
 
           }
 
-          for (var element of variant.model.elements) {
+          for (let element of variant.model.elements) {
             var ttt = new THREE.Vector3(element.to.x,   element.to.y,   element.to.z  ).applyMatrix4(rotation);
             var ttf = new THREE.Vector3(element.to.x,   element.to.y,   element.from.z).applyMatrix4(rotation);
             var tft = new THREE.Vector3(element.to.x,   element.from.y, element.to.z  ).applyMatrix4(rotation);
@@ -1418,7 +1416,7 @@
             }
           }
         }
-        str += '  }\n'
+        str += '  }\n';
         models[id] = str;
       }
       this.builderConfig.meshingFunctions = this.meshingFunctions = models;

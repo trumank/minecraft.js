@@ -183,7 +183,6 @@ function build(chunk) {
       culled[15 + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE] |= f.isBlockOpaque(16, y, z) << 0;
     }
   }
-  // var ranges = {};
   var block, k = 0;
   for (var y = 0; y < config.CHUNK_SIZE; y++) {
     for (var z = 0; z < config.CHUNK_SIZE; z++) {
@@ -192,29 +191,12 @@ function build(chunk) {
           var s = indices.size();
           var mesh = config.meshingFunctions[blocks[j]];
           if (mesh) {
-            mesh(f, x, y, z, culled[j])
+            mesh(f, x, y, z, culled[j]);
           }
-          //MC.draw(blocks[j], x, y, z, culled[j], f);
-          // if (s !== indices.size()) {
-          //   ranges[positionHash(x, y, z)] = [s, indices.size() - s];
-          // }
         }
         j++;
       }
     }
   }
-  // indices = indices.concat();
-  // positions = positions.concat();
-  // colors = colors.concat();
-  // uvs = uvs.concat();
-  // return {
-  //   blocks: ranges,
-  //   attributes: {
-  //     index: indices,
-  //     position: positions,
-  //     color: colors,
-  //     uv: uvs
-  //   }
-  // };
   return [indices, positions, colors, uvs].map(b => b.concat());
 }

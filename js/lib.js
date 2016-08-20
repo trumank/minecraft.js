@@ -218,7 +218,7 @@
       var block = this.getById(id);
       return block ? block.opaque : false;
     }
-  }
+  };
 
   MC.Block = class Block {
     constructor(id, name, solid, opaque, states) {
@@ -229,12 +229,11 @@
       this.states = (states || []).map(state => {
         return Array.isArray(state) ? state : [state, 'normal'];
       });
-      this.prefix;
     }
     getState(metadata) { // TODO: Some blocks need more than metadata to determine state (e.g. grass)
       return this.states[metadata] || [this.name, 'normal'];
     }
-  }
+  };
 
 
   MC.Blocks = new MC.BlockMap();
