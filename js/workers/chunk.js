@@ -74,9 +74,9 @@ function build(chunk) {
       r = r * r * 1.5 + 0.1;
       g = g * g * 1.5 + 0.1;
       b = b * b * 1.5 + 0.1;
-      colors.push(r, g, b);
-      colors.push(r, g, b);
-      colors.push(r, g, b);
+      colors.push(r);
+      colors.push(g);
+      colors.push(b);
       uvs.push(uvx);
       uvs.push(uvy);
       return pi++;
