@@ -71,6 +71,7 @@
       this.transSkyLight = new Uint8Array(this.skyLight.length);
       this.transSkyLight.set(this.skyLight);
       this.intact = true; // false when trans data is in a worker
+      this.diff = new Map();
       this.buildMesh();
       for (var chunk of this.getSurroundingChunks()) {
         chunk.buildMesh();
@@ -95,13 +96,10 @@
       var index = x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE;
       this.blocks[index] = id;
 
-      if (!this.intact) {
-        if (!this.diff) {
-          this.diff = Object.create(null);
-        }
-        this.diff[index] = id; // TODO
-      } else {
+      if (this.intact) {
         this.transBlocks[index] = id;
+      } else {
+        this.diff.set(index, id); // TODO?
       }
       this.buildMesh();
       this.update(x, y, z);
@@ -174,12 +172,12 @@
       this.applyDiff();
     }
     applyDiff() {
-      if (this.diff && !this.intact) {
-        for (var i in this.diff) {
-          this.transBlocks[i] = this.diff[i];
+      if (this.intact) {
+        for (var [index, id] of this.diff) {
+          this.transBlocks[index] = id;
+          this.buildMesh();
         }
-        this.diff = null;
-        this.buildMesh();
+        this.diff.clear();
       }
     }
   };

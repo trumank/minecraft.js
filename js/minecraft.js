@@ -1316,11 +1316,16 @@
             var ftf = new THREE.Vector3(element.from.x, element.to.y,   element.from.z).applyMatrix4(rotation);
             var fff = new THREE.Vector3(element.from.x, element.from.y, element.from.z).applyMatrix4(rotation);
 
-            var f;
+            var f, r, g, b;
+            var c = 0x85c14a;
+            var biome = [(c >> 16 & 0xff) / 0xff, (c >> 8 & 0xff) / 0xff, (c & 0xff) / 0xff];
+            var constant = [1, 1, 1];
             f = element.faces.east;
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 0 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
+              [r, g, b] = f.biomeColor ? biome : constant;
+              str += '        ' + r + ', ' + g + ', ' + b + ',\n';
               str += '        x + ' + tff.x + ', y + ' + tff.y + ', z + ' + tff.z + ', (lPCC + lPMC + lPCM + lPMM) / 4,\n';
               str += '        x + ' + ttf.x + ', y + ' + ttf.y + ', z + ' + ttf.z + ', (lPCC + lPPC + lPCM + lPPM) / 4,\n';
               str += '        x + ' + ttt.x + ', y + ' + ttt.y + ', z + ' + ttt.z + ', (lPCC + lPPC + lPCP + lPPP) / 4,\n';
@@ -1330,6 +1335,8 @@
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 1 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
+              [r, g, b] = f.biomeColor ? biome : constant;
+              str += '        ' + r + ', ' + g + ', ' + b + ',\n';
               str += '        x + ' + fft.x + ', y + ' + fft.y + ', z + ' + fft.z + ', (lMCC + lMMC + lMCP + lMMP) / 4,\n';
               str += '        x + ' + ftt.x + ', y + ' + ftt.y + ', z + ' + ftt.z + ', (lMCC + lMPC + lMCP + lMPP) / 4,\n';
               str += '        x + ' + ftf.x + ', y + ' + ftf.y + ', z + ' + ftf.z + ', (lMCC + lMPC + lMCM + lMPM) / 4,\n';
@@ -1339,6 +1346,8 @@
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 2 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
+              [r, g, b] = f.biomeColor ? biome : constant;
+              str += '        ' + r + ', ' + g + ', ' + b + ',\n';
               str += '        x + ' + ftf.x + ', y + ' + ftf.y + ', z + ' + ftf.z + ', (lCPC + lMPC + lCPM + lMPM) / 4,\n';
               str += '        x + ' + ftt.x + ', y + ' + ftt.y + ', z + ' + ftt.z + ', (lCPC + lMPC + lCPP + lMPP) / 4,\n';
               str += '        x + ' + ttt.x + ', y + ' + ttt.y + ', z + ' + ttt.z + ', (lCPC + lPPC + lCPP + lPPP) / 4,\n';
@@ -1348,6 +1357,8 @@
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 3 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
+              [r, g, b] = f.biomeColor ? biome : constant;
+              str += '        ' + r + ', ' + g + ', ' + b + ',\n';
               str += '        x + ' + tff.x + ', y + ' + tff.y + ', z + ' + tff.z + ', (lCMC + lPMC + lCMM + lPMM) / 4,\n';
               str += '        x + ' + tft.x + ', y + ' + tft.y + ', z + ' + tft.z + ', (lCMC + lPMC + lCMP + lPMP) / 4,\n';
               str += '        x + ' + fft.x + ', y + ' + fft.y + ', z + ' + fft.z + ', (lCMC + lMMC + lCMP + lMMP) / 4,\n';
@@ -1357,6 +1368,8 @@
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 4 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
+              [r, g, b] = f.biomeColor ? biome : constant;
+              str += '        ' + r + ', ' + g + ', ' + b + ',\n';
               str += '        x + ' + tft.x + ', y + ' + tft.y + ', z + ' + tft.z + ', (lCCP + lPCP + lCMP + lPMP) / 4,\n';
               str += '        x + ' + ttt.x + ', y + ' + ttt.y + ', z + ' + ttt.z + ', (lCCP + lPCP + lCPP + lPPP) / 4,\n';
               str += '        x + ' + ftt.x + ', y + ' + ftt.y + ', z + ' + ftt.z + ', (lCCP + lMCP + lCPP + lMPP) / 4,\n';
@@ -1366,6 +1379,8 @@
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 5 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
+              [r, g, b] = f.biomeColor ? biome : constant;
+              str += '        ' + r + ', ' + g + ', ' + b + ',\n';
               str += '        x + ' + fff.x + ', y + ' + fff.y + ', z + ' + fff.z + ', (lCCM + lMCM + lCMM + lMMM) / 4,\n';
               str += '        x + ' + ftf.x + ', y + ' + ftf.y + ', z + ' + ftf.z + ', (lCCM + lMCM + lCPM + lMPM) / 4,\n';
               str += '        x + ' + ttf.x + ', y + ' + ttf.y + ', z + ' + ttf.z + ', (lCCM + lPCM + lCPM + lPPM) / 4,\n';
@@ -1481,6 +1496,7 @@
               x2: texture.x1 + w * face.uv[0],
               y2: texture.y1 + h * (1 - face.uv[1]),
             };
+            face.biomeColor = texture.biomeColor;
           }
         }
         delete vars.textures;
@@ -1534,7 +1550,8 @@
           maxHeight = Math.max(asset.height, maxHeight);
           blocks.push({
             name: name,
-            asset: asset
+            asset: asset,
+            biomeColor: this.isBiomeSpecificColor(name)
           });
         }
       }
@@ -1609,6 +1626,7 @@
         if (node) {
           if (node.block) {
             positions[node.block.name] = {
+              biomeColor: node.block.biomeColor,
               x1: node.rect.x / root.rect.w,
               y1: 1 - ((node.rect.y + node.rect.h) / root.rect.h),
               x2: (node.rect.x + node.rect.w) / root.rect.w,
@@ -1624,10 +1642,27 @@
       this.terrain = drawRoot();
       this.terrainRects = positions;
     }
+    isBiomeSpecificColor(name) {
+      return this.BIOME_COLOR_TEXTURES.has(name);
+    }
     configure(worker) {
       worker.postMessage(['configure', this.builderConfig]);
     }
   };
+  MC.ResourcePack.prototype.BIOME_COLOR_TEXTURES = new Set([
+    'minecraft:blocks/double_plant_grass_bottom',
+    'minecraft:blocks/grass_side_overlay',
+    'minecraft:blocks/grass_top',
+    'minecraft:blocks/double_plant_grass_top',
+    'minecraft:blocks/tallgrass',
+    'minecraft:blocks/leaves_acacia',
+    'minecraft:blocks/leaves_jungle',
+    'minecraft:blocks/leaves_oak',
+    'minecraft:blocks/leaves_big_oak',
+    'minecraft:blocks/leaves_birch',
+    'minecraft:blocks/leaves_spruce',
+    'minecraft:block/waterlily'
+  ]);
 
   MC.Server = class Server extends EventEmitter {
     constructor(host) {

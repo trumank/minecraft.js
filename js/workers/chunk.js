@@ -71,9 +71,9 @@ function build(chunk) {
       // r = (r * 95 + 19) / 115;
       // g = (g * 78 + 15) / 94;
       // b = (b * 40 + 16) / 57;
-      r = r * r * 1.5 + 0.1;
-      g = g * g * 1.5 + 0.1;
-      b = b * b * 1.5 + 0.1;
+      r = r * r * 1.5;
+      g = g * g * 1.5;
+      b = b * b * 1.5;
       colors.push(r);
       colors.push(g);
       colors.push(b);
@@ -81,29 +81,29 @@ function build(chunk) {
       uvs.push(uvy);
       return pi++;
     },
-    squade: (ux1, uy1, ux2, uy2, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) => {
-      var ac = s1 / 16;
-      var a = f.vertex(x1, y1, z1, ac, ac, ac, ux1, uy1);
-      var bc = s2 / 16;
-      var b = f.vertex(x2, y2, z2, bc, bc, bc, ux1, uy2);
-      var cc = s3 / 16;
-      var c = f.vertex(x3, y3, z3, cc, cc, cc, ux2, uy2);
-      var dc = s4 / 16;
-      var d = f.vertex(x4, y4, z4, dc, dc, dc, ux2, uy1);
+    squade: (ux1, uy1, ux2, uy2, r, g, b, x1, y1, z1, s1, x2, y2, z2, s2, x3, y3, z3, s3, x4, y4, z4, s4) => {
+      var ac = s1 / 16 * 12/16 + 4/16;
+      var va = f.vertex(x1, y1, z1, r * ac, g * ac, b * ac, ux1, uy1);
+      var bc = s2 / 16 * 12/16 + 4/16;
+      var vb = f.vertex(x2, y2, z2, r * bc, g * bc, b * bc, ux1, uy2);
+      var cc = s3 / 16 * 12/16 + 4/16;
+      var vc = f.vertex(x3, y3, z3, r * cc, g * cc, b * cc, ux2, uy2);
+      var dc = s4 / 16 * 12/16 + 4/16;
+      var vd = f.vertex(x4, y4, z4, r * dc, g * dc, b * dc, ux2, uy1);
       if (s1 + s3 > s2 + s4) {
-        indices.push(a);
-        indices.push(b);
-        indices.push(c);
-        indices.push(a);
-        indices.push(c);
-        indices.push(d);
+        indices.push(va);
+        indices.push(vb);
+        indices.push(vc);
+        indices.push(va);
+        indices.push(vc);
+        indices.push(vd);
       } else {
-        indices.push(b);
-        indices.push(c);
-        indices.push(d);
-        indices.push(b);
-        indices.push(d);
-        indices.push(a);
+        indices.push(vb);
+        indices.push(vc);
+        indices.push(vd);
+        indices.push(vb);
+        indices.push(vd);
+        indices.push(va);
       }
     },
     getBlock: (x, y, z) => {
