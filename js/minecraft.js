@@ -669,7 +669,7 @@
       this.chunks = {};
       this.server = server;
       this.server.on(['play', 'block_change'], packet => {
-        //this.world.setBlock(packet.x, packet.y, packet.z, packet.type, packet.metapacket);
+        this.world.setBlock(packet.location.x, packet.location.y, packet.location.z, packet.type);
       });
       this.server.on(['play', 'map_chunk'], packet => {
         var stream = new Streams.ReadStream(packet.chunkData.buffer.buffer);
