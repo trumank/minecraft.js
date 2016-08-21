@@ -671,6 +671,11 @@
       this.server.on(['play', 'block_change'], packet => {
         this.world.setBlock(packet.location.x, packet.location.y, packet.location.z, packet.type);
       });
+      this.server.on(['play', 'multi_block_change'], packet => {
+        for (var record of packet.records) {
+          this.world.setBlock(packet.chunkX * MC.CHUNK_SIZE + (record.horizontalPos >> 4 & 0xf), record.y, packet.chunkZ * MC.CHUNK_SIZE + (record.horizontalPos & 0xf), record.blockId);
+        }
+      });
       this.server.on(['play', 'map_chunk'], packet => {
         var stream = new Streams.ReadStream(packet.chunkData.buffer.buffer);
         var l = MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE;
