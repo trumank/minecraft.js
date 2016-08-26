@@ -15,10 +15,10 @@
 
   MC.Minecraft = class Minecraft {
     constructor(container, server) {
+      this.server = new MC.Server('ws://' + location.host);
       this.gui = new MC.GUI(this, container);
       this.player = null;
       this.resources = null;
-      this.server = new MC.Server('ws://' + location.host);
       this.world = null;
 
       this.resources = this.loadResources(err => {
@@ -35,14 +35,6 @@
       });
       this.server.on(['login', 'success'], packet => {
         this.sendSettings();
-      });
-      this.server.on(['play', 'chat'], packet => { // TODO: Complete chat messages
-        var obj = JSON.parse(packet.message);
-        var msg = '';
-        if (obj.translate) {
-          msg = this.resources.language[obj.translate](obj.with);
-        }
-        this.chat.innerText += msg + '\n';
       });
 
       var loop = () => {
@@ -884,6 +876,11 @@
       container.appendChild(this.content);
 
       this.update();
+
+      this.mc.server.on(['play', 'chat'], packet => { // TODO: Complete chat messages
+        var obj = JSON.parse(packet.message);
+        this.showMessage(obj);
+      });
     }
     configurePointerLock() {
       this.isPointerLocked = false;
@@ -1063,6 +1060,28 @@
         cb(null);
       });
     }
+    showMessage(message) {
+      this.chat.innerText += this.buildMessage(message) + '\n';
+    }
+    buildMessage(object) {
+      var msg = '';
+      if (typeof object === 'string') {
+        return object;
+      }
+      else if (typeof object.text === 'string') {
+        msg += object.text;
+      } else if (typeof object.translate === 'string') {
+        msg += this.mc.resources.language.get(object.translate)(object.with.map(obj => this.buildMessage(obj)));
+      } else {
+        // TODO: score and selector cases
+      }
+      if (object.extra) {
+        for (var extra of object.extra) {
+          msg += this.buildMessage(extra);
+        }
+      }
+      return msg;
+    }
   };
 
   MC.nbt = {
@@ -1209,15 +1228,16 @@
                 });
               } else if (/\.lang$/.test(entry.filename)) {
                 entry.getData(new zip.TextWriter(), text => {
-                  var translations = this.assets.set(name, {});
+                  var translations = new Map();
+                  this.assets.set(name, translations);
                   for (var l of (text.match(/[^\n\r]+/g) || [])) {
                     var m = l.match(/^([^=]+)=(.*)$/);
                     if (!m) return;
                     var j = 0;
-                    translations[m[1]] = new Function('a', 'return "' + JSON.stringify(m[2]).slice(1, -1).replace(/(.?)%(.)/g, (m, b, t) => {
-                      if (b === '%' || b === '') return m;
-                      return b + '" + a[' + j++ + '] + "';
-                    }) + '"');
+                    translations.set(m[1], new Function('a', 'return "' + JSON.stringify(m[2]).slice(1, -1).replace(/%(.)/g, (m, b) => {
+                      if (b === '%') return '%';
+                      return '" + a[' + j++ + '] + "';
+                    }) + '"'));
                   }
                   progress(++i / assets.length);
                   cb();

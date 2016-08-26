@@ -26,7 +26,6 @@ body {
     left: 0;
     bottom: 20px;
     width: 400px;
-    min-height: 1em;
     background-color: rgba(1, 1, 1, 0.4);
     color: white;
 }
