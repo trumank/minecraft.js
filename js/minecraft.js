@@ -569,13 +569,6 @@
         this.queuedChunks.splice(i, 1);
       }
     }
-    rebuildDirty() {
-      for (var [key, chunk] of this.chunks) {
-        if (chunk.dirty) {
-          chunk.buildMesh();
-        }
-      }
-    }
     getChunk(x, y, z) {
       return this.chunks.get(MC.util.positionKey(x, y, z));
     }
