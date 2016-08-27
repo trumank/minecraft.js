@@ -22,7 +22,7 @@
       this.world = null;
 
       this.resources = this.loadResources(err => {
-        if (err) return console.err(err);
+        if (err) return console.error(err);
         this.gui.signIn((err, session) => {
           this.joinServer(server.host, server.port);
         });
