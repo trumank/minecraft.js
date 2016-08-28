@@ -44,7 +44,7 @@
       loop();
     }
     loadResources(cb) {
-      var resources = new MC.ResourcePack(['/resourcepacks/resourcepack.zip']);
+      var resources = new MC.ResourcePack(['/resourcepacks/resourcepack.1.8.8.zip']);
       var l = 0;
       var i = setInterval(() => {
         this.gui.bar.style.width = l;

@@ -7,7 +7,7 @@ try {
   fs.mkdirSync('resourcepacks');
 } catch (e) {}
 
-var path = 'resourcepacks/resourcepack.zip';
+var path = 'resourcepacks/resourcepack.1.8.8.zip';
 
 var archive = archiver('zip', {store: true});
 var output = fs.createWriteStream(path, {flags: 'w'});
