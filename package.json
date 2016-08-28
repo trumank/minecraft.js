@@ -7,15 +7,18 @@
     "test": "test"
   },
   "dependencies": {
+    "archiver": "^1.0.1",
     "bson": "^0.4.12",
     "express": "^3.4.8",
     "minecraft-protocol": "^0.15.0",
+    "unzip2": "^0.2.5",
     "ws": "^0.8.0"
   },
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "install": "node install.js"
   },
   "repository": {
     "type": "git",
