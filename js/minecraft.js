@@ -87,7 +87,7 @@
       this.gui.render();
       this.gui.stats.end();
     }
-    sendSettins() {
+    sendSettings() {
       this.server.send(['play', 'settings'], {
         locale: 'en_US',
         viewDistance: 6,
