@@ -5,83 +5,102 @@ var mc = require('minecraft-protocol'),
   WebSocket = require('ws'),
   BSON = new (require('bson').BSONPure.BSON)();
 
-var app = express();
-app.use(express.static(path.resolve('.')));
+class Server {
+  constructor(port) {
+    this.app = express();
+    this.app.use(express.static(path.resolve('.')));
 
-var httpServer = http.createServer(app);
+    this.httpServer = http.createServer(this.app);
 
-var wss = new WebSocket.Server({server: httpServer});
-wss.on('connection', ws => {
-  var session = null;
-  ws.on('message', data => {
-    try {
-      var message = BSON.deserialize(data);
-      var packet = message.packet;
-      var type = message.type;
-      if (type === 'authenticate') {
-        mc.yggdrasil.getSession(packet.username, packet.password, mc.yggdrasil.generateUUID(), false, (err, ses) => {
-          if (err) throw err;
-          session = ses;
-          ws.send(BSON.serialize({
-            type: 'session',
-            packet: {
-              session: session,
-              error: err
-            }
-          }));
-        });
-      } else if (type === 'refresh') {
-        mc.yggdrasil.getSession(packet.username, packet.accessToken, packet.clientToken, true, (err, ses) => {
-          if (err) throw err;
-          session = ses;
-          ws.send(BSON.serialize({
-            type: 'session',
-            packet: {
-              session: session,
-              error: err
-            }
-          }));
-        });
-      } else if (type === 'connect') {
-        if (!session) {
-          console.warn('Client has not authenticated');
-        }
-        packet.username = session ? session.selectedProfile.name : 'Player';
-        packet.accessToken = session ? session.accessToken : '';
-        packet.clientToken = session ? session.clientToken : '';
-        var client = mc.createClient(packet);
-        client.on('error', err => {
-          ws.close(); // TODO: Tell client that server doesn't exist
-        });
-        client.on('state', state => {
-          if (state === mc.states.PLAY) {
-            new Proxy(client, ws);
-          }
-        });
+    this.wss = new WebSocket.Server({server: this.httpServer});
+    this.wss.on('connection', ws => new ClientConnection(ws));
+    this.httpServer.listen(port);
+  }
+}
+
+class ClientConnection {
+  constructor(ws) {
+    this.ws = ws;
+    this.session = null;
+    this.mcserver = null;
+    this.ws.on('message', data => {
+      try {
+        this.onmessage(data);
+      } catch (e) {
+        this.onerror(e);
       }
-    } catch (e) {
-      ws.close();
+    });
+  }
+  onerror(err) {
+    console.error(err);
+    this.ws.end();
+  }
+  onmessage(data) {
+    var message = BSON.deserialize(data);
+    var packet = message.packet;
+    var type = message.type;
+    switch (type) {
+      case 'authenticate':
+        this.authenticate(packet);
+        break;
+      case 'refresh':
+        this.refresh(packet);
+        break;
+      case 'connect':
+        this.connect(packet);
+        break;
+      default:
+        console.error('Unknown packet type ' + type);
     }
-  });
-});
-httpServer.listen(process.env.PORT || 8080);
-
-class Proxy {
-  constructor(server, client) {
-    server.on('end', () => {
-      client.close();
+  }
+  authenticate(packet) {
+    mc.yggdrasil.getSession(packet.username, packet.password, mc.yggdrasil.generateUUID(), false, (err, session) => {
+      this.session = session;
+      ws.send(BSON.serialize({
+        type: 'session',
+        packet: {
+          session: session,
+          error: err
+        }
+      }));
     });
-    server.on('error', () => {
-      client.close();
+  }
+  refresh(packet) {
+    mc.yggdrasil.getSession(packet.username, packet.accessToken, packet.clientToken, true, (err, session) => {
+      this.session = session;
+      ws.send(BSON.serialize({
+        type: 'session',
+        packet: {
+          session: session,
+          error: err
+        }
+      }));
     });
-    server.on('packet', (packet, meta) => {
-      if (client.readyState !== client.OPEN)
-        return client.close();
+  }
+  connect(packet) {
+    if (!this.session) {
+      console.warn('Client has not authenticated');
+    }
+    packet.username = this.session ? this.session.selectedProfile.name : 'Player';
+    packet.accessToken = this.session ? this.session.accessToken : '';
+    packet.clientToken = this.session ? this.session.clientToken : '';
+    this.mcserver = mc.createClient(packet);
+    this.mcserver.on('end', () => {
+      this.ws.close();
+    });
+    this.mcserver.on('error', err => {
+      this.ws.close(); // TODO: Tell client that server doesn't exist
+    });
+    this.mcserver.on('packet', (packet, meta) => {
+      if (this.ws.readyState !== this.ws.OPEN)
+        return this.ws.close();
       var buffer = BSON.serialize({
         type: [meta.state, meta.name],
         packet: packet
       });
-      client.send(buffer);
+      this.ws.send(buffer);
     });
   }
 }
+
+new Server(process.env.PORT || 8080);
