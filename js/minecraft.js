@@ -1042,7 +1042,6 @@
             username: this.username.value,
             password: this.password.value
           };
-          localStorage.credentials = JSON.stringify(cred);
           this.mc.server.send('authenticate', cred);
         };
         this.buttonSignIn.addEventListener('click', click);
