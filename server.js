@@ -56,7 +56,7 @@ class ClientConnection {
   authenticate(packet) {
     mc.yggdrasil.getSession(packet.username, packet.password, mc.yggdrasil.generateUUID(), false, (err, session) => {
       this.session = session;
-      ws.send(BSON.serialize({
+      this.ws.send(BSON.serialize({
         type: 'session',
         packet: {
           session: session,
@@ -68,7 +68,7 @@ class ClientConnection {
   refresh(packet) {
     mc.yggdrasil.getSession(packet.username, packet.accessToken, packet.clientToken, true, (err, session) => {
       this.session = session;
-      ws.send(BSON.serialize({
+      this.ws.send(BSON.serialize({
         type: 'session',
         packet: {
           session: session,
