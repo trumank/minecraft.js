@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "A web based Minecraft client",
   "main": "server.js",
+  "engines": {
+    "node": "6.5.0"
+  },
   "directories": {
     "test": "test"
   },
