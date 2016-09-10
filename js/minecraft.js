@@ -63,7 +63,7 @@
     joinServer(host, port, session) {
       var loader = new MC.ServerChunkLoader(this.server);
       this.world = loader.world = new MC.World(this, loader, this.gui.scene);
-      this.player = new MC.Player(this, 'Player', this.gui.camera, this.gui.selector);
+      this.player = new MC.Player(this, 'Player', this.gui.camera);
 
       var options = {
         host: host,
@@ -83,7 +83,7 @@
       this.server = new MC.TestServer();
       var loader = new MC.TestChunkLoader();
       this.world = loader.world = new MC.World(this, loader, this.gui.scene);
-      this.player = new MC.Player(this, 'Player', this.gui.camera, this.gui.selector);
+      this.player = new MC.Player(this, 'Player', this.gui.camera);
     }
     tick() {
       this.gui.stats.begin();
@@ -115,11 +115,10 @@
   };
 
   MC.Player = class Player {
-    constructor(mc, name, camera, selector) {
+    constructor(mc, name, camera) {
       this.mc = mc;
       this.name = name;
       this.camera = camera;
-      this.selector = selector;
       this.selected = null;
       this.velocity = new THREE.Vector3(0, 0, 0);
       this.position = camera.position;
@@ -367,13 +366,10 @@
         }
       }
       if (box) {
-        this.selector.position.copy(box.center());
-        this.selector.scale.copy(box.size());
-        this.selector.visible = true;
-        this.selected = box.position;
+        this.mc.gui.selectBox(box);
         this.selectedFace = this.findSelectedFace(box);
       } else {
-        this.selector.visible = false;
+        this.mc.gui.selectBox(null);
         this.selected = null;
         this.selectedFace = null;
       }
@@ -917,12 +913,10 @@
       this.scene.add(new THREE.AmbientLight(0xffd880));
 
       this.camera = new THREE.PerspectiveCamera(120, 1, 0.001, 20000);
-      this.selector = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({
-        color: 0x00ee00,
-        wireframe: true,
-        wireframeLinewidth: 2,
-        transparent: true
-      }));
+
+      this.selector = new THREE.BoxHelper();
+      this.selector.material.color.set(0x00ee00);
+      this.selector.material.linewidth = 2;
       this.scene.add(this.selector);
     }
     tick() {
@@ -1090,6 +1084,10 @@
         }
       }
       return msg;
+    }
+    selectBox(box) {
+      this.selector.visible = box;
+      if (box) this.selector.update(box.expandByScalar(0.01));
     }
   };
 
