@@ -859,19 +859,19 @@
   MC.GUI = class GUI {
     constructor(mc, container) {
       this.mc = mc;
-      this.content;
-      this.canvas;
-      this.chat;
-      this.overlay;
-      this.loading;
-      this.bar;
-      this.auth;
-      this.username;
-      this.password;
-      this.buttonSignIn;
-      this.buttonOffline;
-      this.buttonTest;
-      this.renderer;
+      this.content = null;
+      this.canvas = null;
+      this.chat = null;
+      this.overlay = null;
+      this.loading = null;
+      this.bar = null;
+      this.auth = null;
+      this.username = null;
+      this.password = null;
+      this.buttonSignIn = null;
+      this.buttonOffline = null;
+      this.buttonTest = null;
+      this.renderer = null;
 
       this.keysDown = [];
       for (var i = 0; i < 255; i++) {
