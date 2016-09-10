@@ -85,6 +85,9 @@ class ClientConnection {
     packet.accessToken = this.session ? this.session.accessToken : '';
     packet.clientToken = this.session ? this.session.clientToken : '';
     this.mcserver = mc.createClient(packet);
+    this.ws.on('close', () => {
+      this.mcserver.end();
+    });
     this.mcserver.on('end', () => {
       this.ws.close();
     });
