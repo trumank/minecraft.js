@@ -33,7 +33,7 @@ class ClientConnection {
   }
   onerror(err) {
     console.error(err);
-    this.ws.end();
+    this.ws.close();
   }
   onmessage(data) {
     var message = BSON.deserialize(data);
