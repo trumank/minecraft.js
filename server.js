@@ -1,4 +1,5 @@
 var mc = require('minecraft-protocol'),
+  yggdrasil = require('yggdrasil')({}),
   express = require('express'),
   http = require('http'),
   path = require('path'),
@@ -21,7 +22,6 @@ class Server {
 class ClientConnection {
   constructor(ws) {
     this.ws = ws;
-    this.session = null;
     this.mcserver = null;
     this.ws.on('message', data => {
       try {
@@ -54,8 +54,10 @@ class ClientConnection {
     }
   }
   authenticate(packet) {
-    mc.yggdrasil.getSession(packet.username, packet.password, mc.yggdrasil.generateUUID(), false, (err, session) => {
-      this.session = session;
+    yggdrasil.auth({
+      user: packet.username,
+      pass: packet.password
+    }, (err, session) => {
       this.ws.send(BSON.serialize({
         type: 'session',
         packet: {
@@ -66,8 +68,7 @@ class ClientConnection {
     });
   }
   refresh(packet) {
-    mc.yggdrasil.getSession(packet.username, packet.accessToken, packet.clientToken, true, (err, session) => {
-      this.session = session;
+    yggdrasil.refresh(packet.accessToken, packet.clientToken, (err, accessToken, session) => {
       this.ws.send(BSON.serialize({
         type: 'session',
         packet: {
@@ -78,13 +79,15 @@ class ClientConnection {
     });
   }
   connect(packet) {
-    if (!this.session) {
+    if (!packet.session) {
       console.warn('Client has not authenticated');
     }
-    packet.username = this.session ? this.session.selectedProfile.name : 'Player';
-    packet.accessToken = this.session ? this.session.accessToken : '';
-    packet.clientToken = this.session ? this.session.clientToken : '';
-    this.mcserver = mc.createClient(packet);
+    this.mcserver = mc.createClient({
+      host: packet.host,
+      port: packet.port,
+      session: packet.session,
+      username: packet.username
+    });
     this.ws.on('close', () => {
       this.mcserver.end();
     });

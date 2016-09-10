@@ -24,10 +24,10 @@
       this.resources = this.loadResources(err => {
         if (err) return console.error(err);
         this.gui.signIn((err, session) => {
-          this.joinServer(server.host, server.port);
+          this.joinServer(server.host, server.port, session);
         });
         this.gui.offline(err => {
-          this.joinServer(server.host, server.port);
+          this.joinServer(server.host, server.port, 'Player');
         });
         this.gui.testWorld(err => {
           this.joinTestWorld();
@@ -60,15 +60,24 @@
       });
       return resources;
     }
-    joinServer(host, port) {
+    joinServer(host, port, session) {
       var loader = new MC.ServerChunkLoader(this.server);
       this.world = loader.world = new MC.World(this, loader, this.gui.scene);
       this.player = new MC.Player(this, 'Player', this.gui.camera, this.gui.selector);
 
-      this.server.send('connect', {
+      var options = {
         host: host,
         port: port
-      });
+      };
+
+      if (typeof session === 'string') {
+        options.username = session;
+      } else {
+        options.session = session;
+        options.username = session.selectedProfile.name;
+      }
+
+      this.server.send('connect', options);
     }
     joinTestWorld() {
       this.server = new MC.TestServer();
@@ -1020,19 +1029,21 @@
       this.content.appendChild(this.stats.domElement);
     }
     signIn(cb) {
-      this.mc.server.once('session', data => {
-        if (data.err) {
-          return console.log(data.err);
+      var signedIn = (err, session) => {
+        if (err) {
+          return console.log(err);
         }
-        var session = data.session;
         this.buttonSignIn.removeEventListener('click', click);
         this.overlay.style.display = 'none';
         localStorage.session = JSON.stringify(session);
         cb(null, session);
+      };
+      this.mc.server.once('session', data => {
+        session(data.err, data.session);
       });
       var session;
       if (localStorage.session && (session = JSON.parse(localStorage.session))) {
-        this.mc.server.send('refresh', session);
+        signedIn(null, session);
       } else {
         this.auth.style.display = 'block';
         this.username.focus();
@@ -1691,7 +1702,7 @@
       });
     }
     _onmessage(e) {
-      //console.log(e.data.type);
+      // console.log(e.data.type);
       switch (e.data.type) {
         case 'connect':
           connect(e.data.host);
