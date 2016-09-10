@@ -67,8 +67,7 @@
 
       this.server.send('connect', {
         host: host,
-        port: port,
-        username: 'Bot'
+        port: port
       });
     }
     joinTestWorld() {
