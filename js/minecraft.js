@@ -801,57 +801,6 @@
     }
   };
 
-
-  MC.AnvilChunkLoader = class AnvilChunkLoader {
-    constructor(data) { // TODO: Needs to be updated (metadata?)
-      this.data = data;
-      this.stream = new Streams.ReadStream(data);
-      this.chunks = {};
-    }
-    load(x, y, z) {
-      if (this.chunks[x + '_' + y + '_' + z]) {
-        var chunk = this.chunks[x + '_' + y + '_' + z];
-        delete this.chunks[x + '_' + y + '_' + z];
-        return chunk;
-      }
-      this.stream.index = 4 * (x + z * 32);
-      var offset = this.stream.uint24();
-      if (!offset || x < 0 || y < 0 || z < 0 || x >= 32 || y >= 32 || z >= 32) {
-        return {
-          blocks: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE),
-          metadata: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE/2),
-          blockLight: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE/2),
-          skyLight: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE/2)
-        };
-      }
-      this.stream.index = offset * 0x1000;
-      var size = this.stream.uint32();
-      var method = this.stream.uint8();
-      var level = MC.nbt.read(new Zlib.Inflate(new Uint8Array(this.stream.arrayBuffer(size))).decompress()).Level;
-      var sections = level.Sections;
-      for (var i = 0; i < sections.length; ++i) {
-        this.chunks[x + '_' + sections[i].Y + '_' + z] = {
-          blocks: sections[i].Blocks,
-          metadata: sections[i].Data,
-          blockLight: sections[i].BlockLight,
-          skyLight: sections[i].SkyLight,
-          entities: [],
-          tileEntities: []
-        };
-      }
-      for (var j = 0; j < level.TileEntities.length; j++) {
-        var te = level.TileEntities[j];
-        this.chunks[x + '_' + Math.floor(te.y / MC.CHUNK_SIZE) + '_' + z].tileEntities.push(te);
-      }
-      return this.chunks[x + '_' + y + '_' + z] || (this.chunks[x + '_' + y + '_' + z] = {
-        blocks: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE),
-        metadata: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE/2),
-        blockLight: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE/2),
-        skyLight: new Uint8Array(MC.CHUNK_SIZE*MC.CHUNK_SIZE*MC.CHUNK_SIZE/2),
-      });
-    }
-  };
-
   MC.GUI = class GUI {
     constructor(mc, container) {
       this.mc = mc;
@@ -1088,80 +1037,6 @@
     selectBox(box) {
       this.selector.visible = box;
       if (box) this.selector.update(box.expandByScalar(0.01));
-    }
-  };
-
-  MC.nbt = {
-    read: data => {
-      var stream = new Streams.ReadStream(new Uint8Array(data).buffer);
-      
-      var id = stream.uint8();
-      MC.nbt.tags.read[8](stream);
-      return MC.nbt.tags.read[id](stream);
-    },
-    
-    tags: {
-      read: {
-        1: stream => {
-          return stream.int8();
-        },
-        2: stream => {
-          return stream.int16();
-        },
-        3: stream => {
-          return stream.int32();
-        },
-        4: stream => {
-          return stream.int64();
-        },
-        5: stream => {
-          return stream.float32();
-        },
-        6: stream => {
-          return stream.float64();
-        },
-        7: stream => {
-          var size = stream.int32();
-          var array = new Uint8Array(size);
-          for (var i = 0; i < size; ++i) {
-            array[i] = stream.int8();
-          }
-          return array;
-        },
-        8: stream => {
-          return stream.utf8(stream.uint16());
-        },
-        9: stream => {
-          var id = stream.uint8();
-          var size = stream.uint32();
-          var array = [];
-          while (size--) {
-            array.push(MC.nbt.tags.read[id](stream));
-          }
-          return array;
-        },
-        10: stream => {
-          var obj = {};
-          while (true) {
-            var id = stream.uint8();
-            if (!id) {
-              break;
-            }
-            var n = MC.nbt.tags.read[8](stream);
-            var v = MC.nbt.tags.read[id](stream);
-            obj[n] = v;
-          }
-          return obj;
-        },
-        11: stream => {
-          var size = stream.int32();
-          var array = new Uint32Array(size);
-          for (var i = 0; i < size; ++i) {
-            array[i] = stream.int32();
-          }
-          return array;
-        }
-      }    
     }
   };
 
