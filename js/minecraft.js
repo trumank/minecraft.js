@@ -62,8 +62,8 @@
     }
     joinServer(host, port, session) {
       var loader = new MC.ServerChunkLoader(this.server);
-      this.world = loader.world = new MC.World(this, loader, this.gui.scene);
-      this.player = new MC.Player(this, 'Player', this.gui.camera);
+      this.world = loader.world = new MC.World(this, loader, this.gui.worldScene.scene);
+      this.player = new MC.Player(this, 'Player', this.gui.worldScene.camera);
 
       var options = {
         host: host,
@@ -82,8 +82,8 @@
     joinTestWorld() {
       this.server = new MC.TestServer();
       var loader = new MC.TestChunkLoader();
-      this.world = loader.world = new MC.World(this, loader, this.gui.scene);
-      this.player = new MC.Player(this, 'Player', this.gui.camera);
+      this.world = loader.world = new MC.World(this, loader, this.gui.worldScene.scene);
+      this.player = new MC.Player(this, 'Player', this.gui.worldScene.camera);
     }
     tick() {
       this.gui.stats.begin();
@@ -366,10 +366,10 @@
         }
       }
       if (box) {
-        this.mc.gui.selectBox(box);
+        this.mc.gui.worldScene.selectBox(box);
         this.selectedFace = this.findSelectedFace(box);
       } else {
-        this.mc.gui.selectBox(null);
+        this.mc.gui.worldScene.selectBox(null);
         this.selected = null;
         this.selectedFace = null;
       }
@@ -816,7 +816,10 @@
       this.buttonSignIn = null;
       this.buttonOffline = null;
       this.buttonTest = null;
+
       this.renderer = null;
+
+      this.worldScene = new MC.WorldScene();
 
       this.keysDown = [];
       for (var i = 0; i < 255; i++) {
@@ -857,30 +860,18 @@
     buildRenderer() {
       this.renderer = new THREE.WebGLRenderer({canvas: this.canvas});
       this.renderer.setClearColor(0x101010); // sky: :0xbfd1e5
-      this.scene = new THREE.Scene();
-
-      this.scene.add(new THREE.AmbientLight(0xffd880));
-
-      this.camera = new THREE.PerspectiveCamera(120, 1, 0.001, 20000);
-
-      this.selector = new THREE.BoxHelper();
-      this.selector.material.color.set(0x00ee00);
-      this.selector.material.linewidth = 2;
-      this.scene.add(this.selector);
     }
     tick() {
 
     }
     render() {
-      if (this.scene)
-        this.renderer.render(this.scene, this.camera);
+      this.worldScene.render(this.renderer);
     }
     update() {
       this.canvas.width = this.content.clientWidth;
       this.canvas.height = this.content.clientHeight;
       this.renderer.setSize(this.content.clientWidth, this.content.clientHeight);
-      this.camera.aspect = this.content.clientWidth / this.content.clientHeight;
-      this.camera.updateProjectionMatrix();
+      this.worldScene.updateSize(this.content.clientWidth, this.content.clientHeight);
     }
     buildDom() {
       this.content = document.createElement('div');
@@ -1033,6 +1024,36 @@
         }
       }
       return msg;
+    }
+  };
+
+  MC.Scene = class Scene {
+    constructor() {
+      this.camera = null;
+      this.scene = null;
+    }
+    updateSize(width, height) {
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+    }
+    render(renderer) {
+      renderer.render(this.scene, this.camera);
+    }
+  };
+
+  MC.WorldScene = class WorldScene extends MC.Scene {
+    constructor() {
+      super();
+      this.scene = new THREE.Scene();
+
+      this.scene.add(new THREE.AmbientLight(0xffd880));
+
+      this.camera = new THREE.PerspectiveCamera(120, 1, 0.001, 20000);
+
+      this.selector = new THREE.BoxHelper();
+      this.selector.material.color.set(0x00ee00);
+      this.selector.material.linewidth = 2;
+      this.scene.add(this.selector);
     }
     selectBox(box) {
       this.selector.visible = box;
