@@ -1033,7 +1033,21 @@
       this.scene = null;
     }
     updateSize(width, height) {
-      this.camera.aspect = width / height;
+      if (this.camera instanceof THREE.OrthographicCamera) {
+        if (width < height) {
+          this.camera.left = -1;
+          this.camera.right = 1;
+          this.camera.bottom = -height / width;
+          this.camera.top = height / width;
+        } else {
+          this.camera.left = width / height;
+          this.camera.right = -width / height;
+          this.camera.bottom = -1;
+          this.camera.top = 1;
+        }
+      } else if (this.camera instanceof THREE.PerspectiveCamera) {
+        this.camera.aspect = width / height;
+      }
       this.camera.updateProjectionMatrix();
     }
     render(renderer) {
