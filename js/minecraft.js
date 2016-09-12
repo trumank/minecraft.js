@@ -1029,8 +1029,8 @@
 
   MC.Scene = class Scene {
     constructor() {
+      this.scene = new THREE.Scene();
       this.camera = null;
-      this.scene = null;
     }
     updateSize(width, height) {
       if (this.camera instanceof THREE.OrthographicCamera) {
@@ -1058,7 +1058,6 @@
   MC.WorldScene = class WorldScene extends MC.Scene {
     constructor() {
       super();
-      this.scene = new THREE.Scene();
 
       this.scene.add(new THREE.AmbientLight(0xffd880));
 
