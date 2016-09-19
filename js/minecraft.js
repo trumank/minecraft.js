@@ -655,7 +655,7 @@
 
   MC.ServerChunkLoader = class ServerChunkLoader {
     constructor(server) {
-      this.chunks = {};
+      this.chunks = new Map();
       this.server = server;
       this.server.on(['play', 'block_change'], packet => {
         this.world.setBlock(packet.location.x, packet.location.y, packet.location.z, packet.type);
@@ -692,7 +692,7 @@
         }
         for (y = 0; y < this.COLUMN_HEIGHT; y++) {
           if (packet.bitMap & (1 << y)) {
-            this.chunks[packet.x + '_' + y + '_' + packet.z] = chunks[y];
+            this.chunks.set(MC.util.positionKey(packet.x, y, packet.z), chunks[y]);
           }
         }
       });
@@ -724,7 +724,7 @@
           }
           for (y = 0; y < this.COLUMN_HEIGHT; y++) {
             if (d.bitMap & (1 << y)) {
-              this.chunks[d.x + '_' + y + '_' + d.z] = chunks[y];
+              this.chunks.set(MC.util.positionKey(d.x, y, d.z), chunks[y]);
             }
           }
           stream.arrayBuffer(MC.CHUNK_SIZE * MC.CHUNK_SIZE); // ignore biomes
@@ -732,7 +732,7 @@
       });
     }
     load(x, y, z) {
-      return this.chunks[x + '_' + y + '_' + z];
+      return this.chunks.get(MC.util.positionKey(x, y, z));
     }
   };
   MC.ServerChunkLoader.prototype.COLUMN_HEIGHT = 16;
