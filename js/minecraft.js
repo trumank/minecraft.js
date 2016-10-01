@@ -1071,7 +1071,7 @@
       this.scene.add(this.selector);
     }
     selectBox(box) {
-      this.selector.visible = box;
+      this.selector.visible = !!box;
       if (box) this.selector.update(box.expandByScalar(0.01));
     }
   };
