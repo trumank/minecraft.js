@@ -352,7 +352,9 @@
       for (var x = -r; x <= r; x++) {
         for (var y = -r; y <= r; y++) {
           for (var z = -r; z <= r; z++) {
-            boxes = boxes.concat(this.mc.world.getAABBs(pos.x + x, pos.y + y, pos.z + z));
+            for (var b of this.mc.world.getAABBs(pos.x + x, pos.y + y, pos.z + z)) {
+              boxes.push(b);
+            }
           }
         }
       }
