@@ -176,6 +176,11 @@
       });
     }
     tick() {
+      this.updatePosition();
+      this.loadChunks();
+      this.updateSelection();
+    }
+    updatePosition() {
       var speed = this.flying ? this.flyingSpeed : this.walkingSpeed;
       if (this.lastFrame)
         speed *= (Date.now() - this.lastFrame) * 60/1000;
@@ -239,7 +244,8 @@
 
         this.sendUpdate();
       }
-
+    }
+    loadChunks() {
       var cx = this.position.x / MC.CHUNK_SIZE - 0.5 | 0;
       var cy = this.position.y / MC.CHUNK_SIZE - 0.5 | 0;
       var cz = this.position.z / MC.CHUNK_SIZE - 0.5 | 0;
@@ -261,8 +267,6 @@
           }
         }
       }
-
-      this.updateSelection();
     }
     correctCollision() {
       this.onGround = false;
