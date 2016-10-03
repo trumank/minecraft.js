@@ -507,13 +507,11 @@
       for (var i = 0; i < navigator.hardwareConcurrency; i++) {
         var worker = [new Worker('js/workers/chunk.js'), 0];
         this.mc.resources.configure(worker[0]);
-        worker[0].onmessage = msg => {
-          this._onmessage(msg, worker);
-        };
+        worker[0].onmessage = this._onmessage.bind(this, worker);
         this.workers.push(worker);
       }
     }
-    _onmessage(msg, worker) {
+    _onmessage(worker, msg) {
       var [type, data] = msg.data;
       var p = data.position;
       var chunk = this.getChunk(p.x, p.y, p.z);
