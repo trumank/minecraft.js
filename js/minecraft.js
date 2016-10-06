@@ -120,8 +120,9 @@
       this.name = name;
       this.camera = camera;
       this.selected = null;
-      this.velocity = new THREE.Vector3(0, 0, 0);
+      this.timestep = 0;
       this.position = camera.position;
+      this.velocity = new THREE.Vector3();
       this.walkingSpeed = 0.1;
       this.flyingSpeed = 0.3;
       this.lat = this.lon = 0;
@@ -181,10 +182,10 @@
       this.updateSelection();
     }
     updatePosition() {
-      var speed = this.flying ? this.flyingSpeed : this.walkingSpeed;
-      if (this.lastFrame)
-        speed *= (Date.now() - this.lastFrame) * 60/1000;
+      this.timestep = Math.min(10, this.lastFrame ? (Date.now() - this.lastFrame) * 60/1000 : 1);
       this.lastFrame = Date.now();
+
+      var speed = this.flying ? this.flyingSpeed : this.walkingSpeed;
       var oldFov = this.camera.fov;
       var zoomed = this.mc.gui.keysDown[17];
       this.camera.fov = zoomed ? 30 : 120; // zoom
@@ -208,7 +209,7 @@
           }
         } else {
           this.velocity.x = 0;
-          this.velocity.y -= 0.01;
+          this.velocity.y -= 0.01 * this.timestep;
           this.velocity.z = 0;
           if (this.mc.gui.keysDown[32] && this.onGround) { // jump
             this.velocity.y = Math.sqrt(0.02);
@@ -235,8 +236,7 @@
           horizontal.z -= s;
         }
         this.velocity.add(horizontal.normalize().multiplyScalar(speed));
-
-        this.position.add(this.velocity);
+        this.position.add(this.velocity.clone().multiplyScalar(this.timestep));
 
         if (!this.flying && this.getChunk()) {
           this.correctCollision();
@@ -270,7 +270,8 @@
     }
     correctCollision() {
       this.onGround = false;
-      var oldbb = this.getBoundingBox().translate(this.velocity.clone().negate());
+      var velocity = this.velocity.clone().multiplyScalar(this.timestep);
+      var oldbb = this.getBoundingBox().translate(velocity.clone().negate());
       var newbb = this.getBoundingBox(),
         bb = oldbb.clone().union(newbb),
         blocks = [];
@@ -285,8 +286,7 @@
       }
 
       function intersects(a, b) {
-        var epsilon = 0.001;
-        return !(a.max.x <= b.min.x + epsilon || a.min.x >= b.max.x - epsilon || a.max.y <= b.min.y + epsilon || a.min.y >= b.max.y - epsilon);
+        return !(a.max.x <= b.min.x || a.min.x >= b.max.x || a.max.y <= b.min.y || a.min.y >= b.max.y);
       }
 
       var dir;
@@ -300,13 +300,13 @@
         };
         for (var a = 0; a < axes.length; a++) {
           var axis = axes[a];
-          if (this.velocity[axis[0]]) {
-            dir = this.velocity[axis[0]] > 0 ? 'min' : 'max';
+          if (velocity[axis[0]]) {
+            dir = velocity[axis[0]] > 0 ? 'min' : 'max';
             playerFace = {
-              pos: oldbb[this.velocity[axis[0]] < 0 ? 'min' : 'max'][axis[0]],
+              pos: oldbb[velocity[axis[0]] < 0 ? 'min' : 'max'][axis[0]],
               box: new THREE.Box2(new THREE.Vector2(oldbb.min[axis[1]], oldbb.min[axis[2]]), new THREE.Vector2(oldbb.max[axis[1]], oldbb.max[axis[2]]))
             };
-            var n = this.velocity[axis[0]] > 0 ? Infinity : -Infinity,
+            var n = velocity[axis[0]] > 0 ? Infinity : -Infinity,
               minT = Infinity;
             for (var i = 0; i < blocks.length; i++) {
               var block = blocks[i],
@@ -314,21 +314,21 @@
                   pos: block[dir][axis[0]],
                   box: new THREE.Box2(new THREE.Vector2(block.min[axis[1]], block.min[axis[2]]), new THREE.Vector2(block.max[axis[1]], block.max[axis[2]]))
                 },
-                t = (face.pos - playerFace.pos) / this.velocity[axis[0]];
-              if (t >= 0 && intersects(face.box, playerFace.box.clone().translate(new THREE.Vector2(this.velocity[axis[1]] * t, this.velocity[axis[2]] * t)))) {
+                t = (face.pos - playerFace.pos) / velocity[axis[0]];
+              if (t >= 0 && intersects(face.box, playerFace.box.clone().translate(new THREE.Vector2(velocity[axis[1]] * t, velocity[axis[2]] * t)))) {
                 n = Math[dir](face.pos, n);
                 minT = Math.min(minT, t);
               }
             }
             if (axis[0] === 'y') {
-              this.onGround = isFinite(n) && this.velocity.y < 0;
+              this.onGround = isFinite(n) && velocity.y < 0;
             }
             if (isFinite(n)) {
               if (min.time > minT) {
                 min = {
                   axis: a,
                   time: minT,
-                  pos: n + (this.velocity[axis[0]] < 0 ? axis[3] + 0.0001: axis[4] - 0.0001)
+                  pos: n + (velocity[axis[0]] < 0 ? axis[3] : axis[4])
                 };
               }
             }
@@ -339,7 +339,7 @@
         } else {
           var j = axes[min.axis][0];
           this.position[j] = min.pos;
-          this.velocity[j] = 0;
+          this.velocity[j] = velocity[j] = 0;
           axes.splice(min.axis, 1);
           min.axis = -1;
         }
