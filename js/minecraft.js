@@ -328,7 +328,7 @@
                 min = {
                   axis: a,
                   time: minT,
-                  pos: n + (velocity[axis[0]] < 0 ? axis[3] : axis[4])
+                  pos: n + (velocity[axis[0]] < 0 ? axis[3] + 0.00001: axis[4] - 0.00001)
                 };
               }
             }
