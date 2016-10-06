@@ -327,7 +327,7 @@
     new MC.Block(81, 'cactus', false),
     new MC.Block(82, 'clay', true, true),
     new MC.Block(83, 'reeds', false),
-    new MC.Block(84, 'jukebox', false, true),
+    new MC.Block(84, 'jukebox', true, true),
     new MC.Block(85, 'fence', false),
     new MC.Block(86, 'pumpkin', true),
     new MC.Block(87, 'netherrack', true, true),
