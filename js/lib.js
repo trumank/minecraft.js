@@ -14,6 +14,67 @@
     }
   };
 
+  MC.ReadStream = class ReadStream {
+    constructor(arraybuffer) {
+      this.buffer = arraybuffer.buffer || arraybuffer;
+      this.index = 0;
+      this.uint8array = new Uint8Array(this.buffer);
+      this.dataView = new DataView(this.buffer);
+    }
+    set(index) {
+      this.index = index;
+    }
+    skip(count) {
+      this.index += count;
+    }
+    utf8(length) {
+      var string = '';
+      for (var i = 0; i < length; i++) {
+        string += String.fromCharCode(this.uint8());
+      }
+      return string;
+    }
+    arrayBuffer(length, reverse) {
+      if (reverse) {
+        var array = new Uint8Array(length);
+        var i = length;
+        while (i--) {
+          array[i] = this.uint8();
+        }
+        return array.buffer;
+      }
+      return this.buffer.slice(this.index, this.index += length);
+    }
+    uint8    () { return  this.dataView.getUint8  (this.index++); }
+    int8     () { return  this.dataView.getInt8   (this.index++); }
+    uint16be () { var v = this.dataView.getUint16 (this.index, false); this.index += 2; return v; }
+    uint16le () { var v = this.dataView.getUint16 (this.index, true ); this.index += 2; return v; }
+    int16be  () { var v = this.dataView.getInt16  (this.index, false); this.index += 2; return v; }
+    int16le  () { var v = this.dataView.getInt16  (this.index, true ); this.index += 2; return v; }
+    uint32be () { var v = this.dataView.getUint32 (this.index, false); this.index += 4; return v; }
+    uint32le () { var v = this.dataView.getUint32 (this.index, true ); this.index += 4; return v; }
+    int32be  () { var v = this.dataView.getInt32  (this.index, false); this.index += 4; return v; }
+    int32le  () { var v = this.dataView.getInt32  (this.index, true ); this.index += 4; return v; }
+    float32be() { var v = this.dataView.getFloat32(this.index, false); this.index += 4; return v; }
+    float32le() { var v = this.dataView.getFloat32(this.index, true ); this.index += 4; return v; }
+    float64be() { var v = this.dataView.getFloat64(this.index, false); this.index += 8; return v; }
+    float64le() { var v = this.dataView.getFloat64(this.index, true ); this.index += 8; return v; }
+    varInt() {
+      var result = 0;
+      var next = 0x80;
+      var i = 0;
+      while (next & 0x80) {
+        next = this.uint8();
+        result |= (next & 0x7F) << i;
+        i += 7;
+      }
+      // if (i < 32 && next & 0x80) { // TODO: Is signed or not?
+      //   result |= -(1 << i);
+      // }
+      return result;
+    }
+  };
+
   MC.DynamicArray = class DynamicArray {
     constructor(type) {
       this.type = type;

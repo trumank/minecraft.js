@@ -86,7 +86,8 @@ class ClientConnection {
       host: packet.host,
       port: packet.port,
       session: packet.session,
-      username: packet.username
+      username: packet.username,
+      version: '1.10.2'
     });
     this.ws.on('close', () => {
       this.mcserver.end();
