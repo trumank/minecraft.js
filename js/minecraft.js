@@ -374,7 +374,7 @@
       if (box) {
         this.mc.gui.worldScene.selectBox(box);
         this.selectedFace = this.findSelectedFace(box);
-        this.selected = pos;
+        this.selected = box.position;
       } else {
         this.mc.gui.worldScene.selectBox(null);
         this.selectedFace = null;
