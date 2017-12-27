@@ -61,20 +61,18 @@
       this.x = x;
       this.y = y;
       this.z = z;
-      this.blocks = data.blocks;
-      this.blockLight = data.blockLight;
-      this.skyLight = data.skyLight;
-      this.transBlocks = new Uint16Array(this.blocks.length);
-      this.transBlocks.set(this.blocks);
-      this.transBlockLight = new Uint8Array(this.blockLight.length);
-      this.transBlockLight.set(this.blockLight);
-      this.transSkyLight = new Uint8Array(this.skyLight.length);
-      this.transSkyLight.set(this.skyLight);
-      this.intact = true; // false when trans data is in a worker
-      this.diff = new Map();
+      this.constructBuffer(data);
       this.buildMesh();
       for (var chunk of this.getSurroundingChunks()) {
         chunk.buildMesh();
+      }
+    }
+    constructBuffer(obj) {
+      this.data = new SharedArrayBuffer(obj.blocks.length * 4);
+      this.view = new Uint32Array(this.data);
+      for (let i = 0; i < obj.blocks.length; i++) {
+        const shift = i % 2 ? 4 : 0;
+        this.view[i] = obj.blocks[i] | (obj.blockLight[i >> 1] >> shift) << 16 | (obj.skyLight[i >> 1] >> shift) << 20;
       }
     }
     update(x, y, z) {
@@ -94,13 +92,7 @@
     }
     setBlock(x, y, z, id) {
       var index = x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE;
-      this.blocks[index] = id;
-
-      if (this.intact) {
-        this.transBlocks[index] = id;
-      } else {
-        this.diff.set(index, id); // TODO?
-      }
+      this.view[index] = this.view[index] & ~0xffff | id & 0xffff;
       this.buildMesh();
       this.update(x, y, z);
     }
@@ -108,7 +100,7 @@
       if (x < 0 || x >= MC.CHUNK_SIZE || y < 0 || y > MC.CHUNK_SIZE || z < 0 || z >= MC.CHUNK_SIZE) {
         return -1;
       }
-      return this.blocks[x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE];
+      return 0xffff & this.view[x + z * MC.CHUNK_SIZE + y * MC.CHUNK_SIZE * MC.CHUNK_SIZE];
     }
     getSurroundingChunks() {
       return this.world.getSurroundingChunks(this.x, this.y, this.z);
@@ -126,20 +118,7 @@
     }
 
     buildMesh() {
-      if (this.queued) {
-        return;
-      }
-      this.queued = true;
       this.world.queueChunk(this);
-    }
-    readyToBuild() {
-      if (!this.intact) return false;
-      for (var chunk of this.getSurroundingChunks()) {
-        if (!chunk.intact) {
-          return false;
-        }
-      }
-      return true;
     }
     setGeometryBuffer(res) {
       //this.blockIndexes = res.blocks;
@@ -155,30 +134,13 @@
       this.dirty = false;
       this.mesh = mesh;
       this.world.updateGeometry(this);
-      this.queued = false;
     }
     sendToWorker(worker, build) {
-      this.intact = false;
-      var data = [this.transBlocks, this.transBlockLight, this.transSkyLight];
       worker.postMessage(['chunk', {
         build: build,
-        data: data,
+        data: this.data,
         position: {x: this.x, y: this.y, z: this.z},
-      }], data.map(a => a.buffer));
-    }
-    setFromWorker(data) {
-      [this.transBlocks, this.transBlockLight, this.transSkyLight] = data;
-      this.intact = true;
-      this.applyDiff();
-    }
-    applyDiff() {
-      if (this.intact) {
-        for (var [index, id] of this.diff) {
-          this.transBlocks[index] = id;
-          this.buildMesh();
-        }
-        this.diff.clear();
-      }
+      }]);
     }
   };
 

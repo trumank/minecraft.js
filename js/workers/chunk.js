@@ -27,6 +27,7 @@ self.onmessage = msg => {
       break;
     case 'chunk':
       var p = data.position;
+      data.data = new Uint32Array(data.data);
       chunks.set(positionHash(p.x, p.y, p.z), data);
       if (data.build) {
         var mesh = build(data);
@@ -34,17 +35,6 @@ self.onmessage = msg => {
           position: data.position,
           mesh: mesh
         }, mesh.map(a => a.buffer)]);
-        var coords = [{x:1,y:0,z:0},{x:-1,y:0,z:0},{x:0,y:1,z:0},{x:0,y:-1,z:0},{x:0,y:0,z:1},{x:0,y:0,z:-1}];
-        for (var c of coords) {
-          var str = positionHash(p.x + c.x, p.y + c.y, p.z + c.z);
-          var chunk = chunks.get(str);
-          if (chunk) {
-            chunks.delete(str);
-            postMessage(['chunk', chunk], chunk.data.map(a => a.buffer));
-          }
-        }
-        chunks.delete(positionHash(p.x, p.y, p.z));
-        postMessage(['chunk', data], data.data.map(a => a.buffer));
       }
       break;
     default:
@@ -54,7 +44,7 @@ self.onmessage = msg => {
 
 function build(chunk) {
   var pos = chunk.position;
-  var [blocks, blockLight, skyLight] = chunk.data;
+  var data = chunk.data;
   var culled = new Uint8Array(config.CHUNK_SIZE * config.CHUNK_SIZE * config.CHUNK_SIZE);
   var indices = new MC.DynamicArray(Uint32Array);
   var positions = new MC.DynamicArray(Float32Array);
@@ -106,48 +96,34 @@ function build(chunk) {
         indices.push(va);
       }
     },
-    getBlock: (x, y, z) => {
+    getBlock: (x, y, z, d) => {
       if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
         var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
         var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
         var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
         var c = chunks.get(positionHash(cx, cy, cz));
         if (!c) {
-          return 0;
+          return d || 0;
         }
-        return c.data[0][mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE];
+        return c.data[mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE];
       }
       // special case for this chunk for optimization
-      return blocks[x + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE];
+      return data[x + z * config.CHUNK_SIZE + y * config.CHUNK_SIZE * config.CHUNK_SIZE];
     },
-    getProp: (x, y, z, prop) => {
-      var arr;
-      if (x < 0 || x >= config.CHUNK_SIZE || y < 0 || y >= config.CHUNK_SIZE || z < 0 || z >= config.CHUNK_SIZE) {
-        var cx = (x + config.CHUNK_SIZE * pos.x) >> 4;
-        var cy = (y + config.CHUNK_SIZE * pos.y) >> 4;
-        var cz = (z + config.CHUNK_SIZE * pos.z) >> 4;
-        var c = chunks.get(positionHash(cx, cy, cz));
-        if (!c) {
-          return -1;
-        }
-        arr = c.data[prop];
-      } else {
-        // special case for this chunk for optimization
-        arr = chunk.data[prop];
-      }
-      var b = arr[(mod(x, config.CHUNK_SIZE) + mod(z, config.CHUNK_SIZE) * config.CHUNK_SIZE + mod(y, config.CHUNK_SIZE) * config.CHUNK_SIZE * config.CHUNK_SIZE) >> 1];
-      return (x % 2 ? b >> 4 : b) & 0xf;
+    getBlockId: (x, y, z) => {
+      const n = 0xffff & f.getBlock(x, y, z);
+      return n < 0 ? 0 : n;
     },
     getBlockLight: (x, y, z) => {
       //return 10;
-      //return f.getProp(x, y, z, 'blockLight');
-      return f.getProp(x, y, z, 1);// | f.getProp(x, y, z, 'skyLight');
+      return Math.max(0xf & f.getBlock(x, y, z) >> 16, 0xf & f.getBlock(x, y, z) >> 20);
     },
     getSkyLight: (x, y, z) => {
-      return f.getProp(x, y, z, 2);
+      return 0xf & f.getBlock(x, y, z) >> 20;
     },
     isBlockOpaque: (x, y, z) => {
-      var block = MC.Blocks.getById(f.getBlock(x, y, z));
+      const d = f.getBlock(x, y, z);
+      var block = MC.Blocks.getById(0xffff & d);
       return block && block.opaque; // TODO
     }
   };
@@ -187,9 +163,10 @@ function build(chunk) {
   for (var y = 0; y < config.CHUNK_SIZE; y++) {
     for (var z = 0; z < config.CHUNK_SIZE; z++) {
       for (var x = 0; x < config.CHUNK_SIZE; x++) {
-        if (blocks[j]) {
+        if (0xffff & data[j]) {
           var s = indices.size();
-          var mesh = config.meshingFunctions[blocks[j]];
+          var mesh = config.meshingFunctions[0xffff & data[j]];
+
           if (mesh) {
             mesh(f, x, y, z, culled[j]);
           }

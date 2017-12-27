@@ -502,7 +502,7 @@
       this.chunks = new Map();
       this.chunkLoader = loader;
       this.scene = scene;
-      this.queuedChunks = [];
+      this.queuedChunks = new Set();
       this.workers = [];
       for (var i = 0; i < navigator.hardwareConcurrency; i++) {
         var worker = [new Worker('js/workers/chunk.js'), 0];
@@ -516,14 +516,10 @@
       var p = data.position;
       var chunk = this.getChunk(p.x, p.y, p.z);
       switch (type) {
-        case 'chunk':
-          if (chunk) {
-            chunk.setFromWorker(data.data);
-          }
-          break;
         case 'mesh':
           if (chunk) {
             chunk.setGeometryBuffer(data.mesh);
+            chunk.isBuilding = false;
           }
           worker[1]--;
           break;
@@ -548,12 +544,11 @@
       this.chunks.delete(MC.util.positionKey(x, y, z));
     }
     queueChunk(chunk) {
-      this.queuedChunks.push(chunk);
+      this.queuedChunks.add(chunk);
     }
     buildQueuedChunks() {
-      for (var i = this.queuedChunks.length - 1; i >= 0; i--) {
-        var chunk = this.queuedChunks[i];
-        if (!chunk.readyToBuild()) continue;
+      for (const chunk of this.queuedChunks) {
+        if (chunk.isBuilding) continue;
         var least;
         var leastLoad = Infinity;
         for (var worker of this.workers) {
@@ -565,9 +560,10 @@
         for (var n of chunk.getSurroundingChunks()) {
           n.sendToWorker(least[0], false);
         }
+        chunk.isBuilding = true;
         chunk.sendToWorker(least[0], true);
+        this.queuedChunks.delete(chunk);
         least[1]++;
-        this.queuedChunks.splice(i, 1);
       }
     }
     getChunk(x, y, z) {
