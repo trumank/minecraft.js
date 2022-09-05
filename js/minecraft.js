@@ -1217,7 +1217,13 @@
           totalWeight += variant.weight || 1;
         }
 
-        str += '  var n = Math.random() * ' + totalWeight + ';\n\n';
+        str += '  var a = ((((x + z) * (x + z + 1)) / 2 + z + y) * (((x + z) * (x + z + 1)) / 2 + z + y + 1)) / 2 + y;\n';
+        str += '  a = (a ^ 61) ^ (a >> 16);\n';
+        str += '  a = a + (a << 3);\n';
+        str += '  a = a ^ (a >> 4);\n';
+        str += '  a = a * 0x27d4eb2d;\n';
+        str += '  a = a ^ (a >> 15);\n';
+        str += '  var n = a % ' + totalWeight + ';\n\n';
 
         var w = 0;
 
@@ -1237,25 +1243,58 @@
           // rotation.multiply(new THREE.Matrix4().makeRotationY((variant.y) * Math.PI / 180));
           // rotation.multiply(new THREE.Matrix4().makeTranslation(-0.5, -0.5, -0.5));
 
-          switch(MC.util.mod(variant.x, 90) << 2 | MC.util.mod(variant.y, 90)) {
+          var rotX = MC.util.mod(variant.x / 90, 4); // number of times rotated
+          var rotY = MC.util.mod(variant.y / 90, 4); // number of times rotated
 
+          var rotatedFaces = {
+            east: 'east',
+            west: 'west',
+            up: 'up',
+            down: 'down',
+            north: 'north',
+            south: 'south'
+          };
+
+          var rot;
+
+          for (rot = 0; rot < rotX; rot++) {
+            var t = rotatedFaces.north;
+            rotatedFaces.north = rotatedFaces.up;
+            rotatedFaces.up = rotatedFaces.south;
+            rotatedFaces.south = rotatedFaces.down;
+            rotatedFaces.down = t;
+          }
+
+          for (rot = 0; rot < rotY; rot++) {
+            var t = rotatedFaces.north;
+            rotatedFaces.north = rotatedFaces.east;
+            rotatedFaces.east = rotatedFaces.south;
+            rotatedFaces.south = rotatedFaces.west;
+            rotatedFaces.west = t;
           }
 
           for (let element of variant.model.elements) {
-            var ttt = new THREE.Vector3(element.to.x,   element.to.y,   element.to.z  ).applyMatrix4(rotation);
-            var ttf = new THREE.Vector3(element.to.x,   element.to.y,   element.from.z).applyMatrix4(rotation);
-            var tft = new THREE.Vector3(element.to.x,   element.from.y, element.to.z  ).applyMatrix4(rotation);
-            var tff = new THREE.Vector3(element.to.x,   element.from.y, element.from.z).applyMatrix4(rotation);
-            var ftt = new THREE.Vector3(element.from.x, element.to.y,   element.to.z  ).applyMatrix4(rotation);
-            var fft = new THREE.Vector3(element.from.x, element.from.y, element.to.z  ).applyMatrix4(rotation);
-            var ftf = new THREE.Vector3(element.from.x, element.to.y,   element.from.z).applyMatrix4(rotation);
-            var fff = new THREE.Vector3(element.from.x, element.from.y, element.from.z).applyMatrix4(rotation);
+            var ttt = new THREE.Vector3(element.to.x,   element.to.y,   element.to.z  ); // .applyMatrix4(rotation);
+            var ttf = new THREE.Vector3(element.to.x,   element.to.y,   element.from.z); // .applyMatrix4(rotation);
+            var tft = new THREE.Vector3(element.to.x,   element.from.y, element.to.z  ); // .applyMatrix4(rotation);
+            var tff = new THREE.Vector3(element.to.x,   element.from.y, element.from.z); // .applyMatrix4(rotation);
+            var ftt = new THREE.Vector3(element.from.x, element.to.y,   element.to.z  ); // .applyMatrix4(rotation);
+            var fft = new THREE.Vector3(element.from.x, element.from.y, element.to.z  ); // .applyMatrix4(rotation);
+            var ftf = new THREE.Vector3(element.from.x, element.to.y,   element.from.z); // .applyMatrix4(rotation);
+            var fff = new THREE.Vector3(element.from.x, element.from.y, element.from.z); // .applyMatrix4(rotation);
+
+            var east  = element.faces.east;
+            var west  = element.faces.west;
+            var up    = element.faces.up;
+            var down  = element.faces.down;
+            var north = element.faces.north;
+            var south = element.faces.south;
 
             var f, r, g, b;
             var c = 0x85c14a;
             var biome = [(c >> 16 & 0xff) / 0xff, (c >> 8 & 0xff) / 0xff, (c & 0xff) / 0xff];
             var constant = [1, 1, 1];
-            f = element.faces.east;
+            f = element.faces[rotatedFaces.east];
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 0 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
@@ -1266,7 +1305,7 @@
               str += '        x + ' + ttt.x + ', y + ' + ttt.y + ', z + ' + ttt.z + ', (lPCC + lPPC + lPCP + lPPP) / 4,\n';
               str += '        x + ' + tft.x + ', y + ' + tft.y + ', z + ' + tft.z + ', (lPCC + lPMC + lPCP + lPMP) / 4);\n';
             }
-            f = element.faces.west;
+            f = element.faces[rotatedFaces.west];
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 1 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
@@ -1277,7 +1316,7 @@
               str += '        x + ' + ftf.x + ', y + ' + ftf.y + ', z + ' + ftf.z + ', (lMCC + lMPC + lMCM + lMPM) / 4,\n';
               str += '        x + ' + fff.x + ', y + ' + fff.y + ', z + ' + fff.z + ', (lMCC + lMMC + lMCM + lMMM) / 4);\n';
             }
-            f = element.faces.up;
+            f = element.faces[rotatedFaces.up];
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 2 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
@@ -1288,7 +1327,7 @@
               str += '        x + ' + ttt.x + ', y + ' + ttt.y + ', z + ' + ttt.z + ', (lCPC + lPPC + lCPP + lPPP) / 4,\n';
               str += '        x + ' + ttf.x + ', y + ' + ttf.y + ', z + ' + ttf.z + ', (lCPC + lPPC + lCPM + lPPM) / 4);\n';
             }
-            f = element.faces.down;
+            f = element.faces[rotatedFaces.down];
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 3 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
@@ -1299,7 +1338,7 @@
               str += '        x + ' + fft.x + ', y + ' + fft.y + ', z + ' + fft.z + ', (lCMC + lMMC + lCMP + lMMP) / 4,\n';
               str += '        x + ' + fff.x + ', y + ' + fff.y + ', z + ' + fff.z + ', (lCMC + lMMC + lCMM + lMMM) / 4);\n';
             }
-            f = element.faces.north;
+            f = element.faces[rotatedFaces.north];
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 4 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';
@@ -1310,7 +1349,7 @@
               str += '        x + ' + ftt.x + ', y + ' + ftt.y + ', z + ' + ftt.z + ', (lCCP + lMCP + lCPP + lMPP) / 4,\n';
               str += '        x + ' + fft.x + ', y + ' + fft.y + ', z + ' + fft.z + ', (lCCP + lMCP + lCMP + lMMP) / 4);\n';
             }
-            f = element.faces.south;
+            f = element.faces[rotatedFaces.south];
             if (f) {
               if (f.cullface) str += '    if (!(culled >> 5 & 1))\n';
               str += '      fn.squade(' + f.uv.x1 + ', ' + f.uv.y1 + ', ' + f.uv.x2 + ', ' + f.uv.y2 + ',\n';

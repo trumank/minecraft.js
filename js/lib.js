@@ -2,12 +2,16 @@
   'use strict';
 
   var Util = {
-    random: array => {
-      return Array.isArray(array) ? array[Math.random() * array.length | 0] : array;
+    random: (x, y, z, array) => {
+      const mask = 0xffffffff;
+      const h = ((x * 31 + y) * 31 + z);
+      const i = (18000 * (h & 65535) + (h >> 16)) & mask;
+      const n = i / 4294967296;
+      return Array.isArray(array) ? array[n * array.length | 0] : array;
     },
-    getVariant: blockState => {
+    getVariant: (x, y, z, blockState) => {
       if (Array.isArray(blockState.variants.normal)) {
-        return Util.random(blockState.variants.normal);
+        return Util.random(x, y, z, blockState.variants.normal);
       } else {
         return blockState.variants.normal;
       }
@@ -301,7 +305,23 @@
     new MC.Block(66, 'rail', false),
     new MC.Block(67, 'stone_stairs', false),
     new MC.Block(68, 'wall_sign', false),
-    new MC.Block(69, 'lever', false),
+    new MC.Block(69, 'lever', false, false, [
+      ['lever', 'facing=down_x,powered=false'],
+      ['lever', 'facing=east,powered=false'],
+      ['lever', 'facing=west,powered=false'],
+      ['lever', 'facing=south,powered=false'],
+      ['lever', 'facing=north,powered=false'],
+      ['lever', 'facing=up_z,powered=false'],
+      ['lever', 'facing=up_x,powered=false'],
+      ['lever', 'facing=down_z,powered=false'],
+      ['lever', 'facing=down_x,powered=true'],
+      ['lever', 'facing=east,powered=true'],
+      ['lever', 'facing=west,powered=true'],
+      ['lever', 'facing=south,powered=true'],
+      ['lever', 'facing=north,powered=true'],
+      ['lever', 'facing=up_z,powered=true'],
+      ['lever', 'facing=up_x,powered=true'],
+      ['lever', 'facing=down_z,powered=true']]),
     new MC.Block(70, 'stone_pressure_plate', false),
     new MC.Block(71, 'iron_door', false),
     new MC.Block(72, 'wooden_pressure_plate', false),
