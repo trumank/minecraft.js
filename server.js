@@ -9,6 +9,12 @@ var mc = require('minecraft-protocol'),
 class Server {
   constructor(port) {
     this.app = express();
+    this.app.use(function (_req, res, next) {
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+      res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+      next();
+    });
+
     this.app.use(express.static(path.resolve('.')));
 
     this.httpServer = http.createServer(this.app);
