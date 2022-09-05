@@ -14,7 +14,7 @@
     "bson": "0.4.12",
     "express": "3.4.8",
     "minecraft-protocol": "1.0.1",
-    "unzip2": "0.2.5",
+    "unzipper": "^0.10.11",
     "ws": "0.8.0",
     "yggdrasil": "0.1.0"
   },

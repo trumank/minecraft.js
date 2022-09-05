@@ -1,6 +1,6 @@
 var https = require('https');
 var fs = require('fs');
-var unzip = require('unzip2');
+var unzip = require('unzipper');
 var archiver = require('archiver');
 
 try {
