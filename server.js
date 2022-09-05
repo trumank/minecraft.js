@@ -4,7 +4,7 @@ var mc = require('minecraft-protocol'),
   http = require('http'),
   path = require('path'),
   WebSocket = require('ws'),
-  BSON = new (require('bson').BSONPure.BSON)();
+  BSON = require('bson');
 
 class Server {
   constructor(port) {
